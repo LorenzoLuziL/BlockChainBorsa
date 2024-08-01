@@ -1,0 +1,51 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract FunzioneEsplicita{
+
+ struct StatoMemoria{
+        uint numeroPersone;
+        uint tempoMedio;
+        string nomeRappresentante;
+    }
+    StatoMemoria public statoMemoria;
+
+    
+    struct Value{
+        bytes value;
+        bytes tipo;
+    }
+    mapping(bytes => Value) public memoryState;
+
+    bytes public tipoStringa= abi.encode("string");
+    bytes public tipoUint= abi.encode("uint");
+    bytes public tipoBool= abi.encode("bool");
+    
+    function testFunction(bytes[] memory data,bytes [] memory attributi,bytes [] memory tipi) public {
+        require(data.length==attributi.length && attributi.length==tipi.length);
+        for (uint i=0;i<attributi.length;i++){
+            memoryState[attributi[i]]=Value(data[i],tipi[i]);
+        }
+    }
+    function getData(bytes memory attribute) public view returns (uint x ,string memory y, bool z){
+        if(keccak256(memoryState[attribute].tipo)==keccak256(tipoStringa)){
+            y=abi.decode(memoryState[attribute].value, (string));
+        }else if(keccak256(memoryState[attribute].tipo)==keccak256(tipoUint)){
+            x=abi.decode(memoryState[attribute].value, (uint));
+        }else if(keccak256(memoryState[attribute].value)==keccak256(tipoBool)){
+            z=abi.decode(memoryState[attribute].value,(bool));
+        }
+    }
+    //
+    //funzioni di appoggio che mi servono solo per codificare in bytes 
+    //gli attributi da passare alla funzione sopra
+    //
+    function codificaDatiInt(int numero)public pure returns(bytes memory ){
+        return abi.encode(numero);
+    }
+
+    function codificaDatiString(string memory stringa)public pure returns (bytes memory ){
+        return abi.encode(stringa);
+    }
+
+}
