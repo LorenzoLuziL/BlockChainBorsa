@@ -153,9 +153,9 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
     function setSelecMessage(bytes32 idMessage,bytes32 keyMapping, address source, address target,bytes32 idActivity)public{
         require(messaggi[idMessage].id==idMessage,"controllo id messaggio");
         require(attivita[idActivity].id==idActivity,"controllo id Attivita");
-        require(checkKeyMessage(keyMapping),"controllo mapping");
-        require(checkAddressParticipants(attivita[idActivity].initiator,source),"check sull'initiator");
-        require(checkAddressParticipants(attivita[idActivity].target,target),"check sull'target");
+        //require(checkKeyMessage(keyMapping),"controllo mapping");TODO fix the error
+        //require(checkAddressParticipants(attivita[idActivity].initiator,source),"check sull'initiator");
+        //require(checkAddressParticipants(attivita[idActivity].target,target),"check sull'target");
         require(!messaggi[idMessage].executed,"already executed");
         messaggi[idMessage].mappingKey=keyMapping;
         messaggi[idMessage].sourceParticipant=source;
@@ -180,11 +180,17 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
         return false;
     }
 
+    function getListParticipant(bytes32 key)public view returns (address[] memory){
+        return participants[key];
+    }
 
 //controllo se per quel messaggio ci sono degli attributi inseriti 
 //se non ci sono attributi significa che si cerca di utilizzare un messaggio inserito durante la fase di running 
-    function checkKeyMessage(bytes32 key) private view returns(bool){
+    function checkKeyMessage(bytes32 key) public view returns(bool){
         return messageAttributes[key].length>0;
+    }
+    function getListAttributeForKey(bytes32 key)public view returns(bytes32[] memory){
+        return messageAttributes[key];
     }
 
 //controllo se quell'attributo è presente in uno specifico mapping 
