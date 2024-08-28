@@ -15,15 +15,15 @@ contract storeElement{
 //message: id of the message 
 //executed: if the activity was executed 
     struct Activity{
+        bool executed;
         bytes32 id;
-        bytes32 name;
-        bytes32 initiator;
-        bytes32 target;
         bytes32 idInElement;
         bytes32 idOutElement;
+        bytes32 initiator;
         bytes32 messageIn;//message of the initiator(sopra)
         bytes32 messageOut;//message of the target(sotto)
-        bool executed;
+        bytes32 name;
+        bytes32 target;
     }
     mapping(bytes32=>Activity) public attivita;
 
@@ -40,16 +40,17 @@ contract storeElement{
     enum ElementType {START, EX_SPLIT, EX_JOIN, PAR_SPLIT, PAR_JOIN, EVENT_BASED, END}
 
     struct ControlFlowElement{
+        bool executed;
         bytes32 id;
-        ElementType tipo;
         bytes32 [] incomingActivity;
         bytes32 [] outgoingActivity;
-        bool executed;
+        ElementType tipo;
     }
 mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
     
 
     //type to define one condition 
+    //                      0,    1,   2,      3,         4
     enum ConditionType {GREATER,LESS,EQUAL,GREATEREQUAL,LESSEQUAL}
     //struct to represent the condition with the parameter of the condition
     struct EdgeCondition{
@@ -64,14 +65,14 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
     mapping(bytes32=>EdgeCondition[]) public edgeConditionMapping;
 
     struct Message{
+        bool executed;
         bytes32 id;
-        bytes32 nome;
+        bytes32 idActivity;//It is used to see the activity associeted to the message from the message perspective
         bytes32 mappingKey;// key of attributes mapping
+        bytes32 name;
         bytes32 [] selectedAttr;//this field is used in the case of composition 
         address sourceParticipant;
         address targetParticipant;//maybe useless
-        bytes32 idActivity;//It is used to see the activity associeted to the message from the message perspective
-        bool executed;
     }
     mapping(bytes32=>Message)public messaggi;
 
@@ -88,13 +89,13 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
     mapping(bytes32=>bytes32) public attributiValue ;
     //struct used only to pass the participant information to the contract 
     struct PartecipantRoles{
-        bytes32 key;
-        address [] indirizzi;
+        address [] addr;
+        bytes32 keyMapping;
     }   
     //struct used only to pass the message and the attributes to the contract
     struct MessageAttributes{
-        bytes32 key;
         bytes32 [] attributes;
+        bytes32 keyMapping;
     }
 
     event FunctionDone (bytes32 messaggeId);
@@ -108,10 +109,10 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
             messaggi[allMessages[i].id]=allMessages[i];
         }
         for(uint i=0;i<participantList.length;i++){
-            participants[participantList[i].key]=participantList[i].indirizzi;
+            participants[participantList[i].keyMapping]=participantList[i].addr;
         }
         for(uint i=0;i<messagesAttributeList.length;i++){
-            messageAttributes[messagesAttributeList[i].key]=messagesAttributeList[i].attributes;
+            messageAttributes[messagesAttributeList[i].keyMapping]=messagesAttributeList[i].attributes;
         }
         for(uint i=0;i<edgeCondition.length;i++){
             edgeConditionMapping[edgeCondition[i].idActivity].push(edgeCondition[i]);
@@ -153,9 +154,9 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
     function setSelecMessage(bytes32 idMessage,bytes32 keyMapping, address source, address target,bytes32 idActivity)public{
         require(messaggi[idMessage].id==idMessage,"controllo id messaggio");
         require(attivita[idActivity].id==idActivity,"controllo id Attivita");
-        //require(checkKeyMessage(keyMapping),"controllo mapping");TODO fix the error
-        //require(checkAddressParticipants(attivita[idActivity].initiator,source),"check sull'initiator");
-        //require(checkAddressParticipants(attivita[idActivity].target,target),"check sull'target");
+        require(checkKeyMessage(keyMapping),"controllo mapping");
+        require(checkAddressParticipants(attivita[idActivity].initiator,source),"check sull'initiator");
+        require(checkAddressParticipants(attivita[idActivity].target,target),"check sull'target");
         require(!messaggi[idMessage].executed,"already executed");
         messaggi[idMessage].mappingKey=keyMapping;
         messaggi[idMessage].sourceParticipant=source;
@@ -207,7 +208,6 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
 //Check if i can execute that message 
     function checkTheExecution(bytes32 idMessage) private returns (bool){
         Activity memory temp=attivita[messaggi[idMessage].idActivity];
-        
         //set the message executed to true
         if(temp.messageIn==idMessage){
             if(attivita[temp.idInElement].executed){
@@ -220,15 +220,15 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
                 if(controlFlowElementList[temp.idInElement].tipo==ElementType.START){
                     messaggi[idMessage].executed=true;
                     if(attivita[temp.id].messageOut==bytes32(0)){
-                    attivita[temp.id].executed=true;
-                }
+                        attivita[temp.id].executed=true;
+                    }
                     return true; 
                 }else if(checkForGatewayCondition(temp.idInElement,temp)){
                     messaggi[idMessage].executed=true;
                     controlFlowElementList[temp.idInElement].executed=true;
-                    if(attivita[temp.idInElement].messageOut==bytes32(0)){
-                    attivita[temp.idInElement].executed=true;
-                }
+                    if(attivita[temp.id].messageOut==bytes32(0)){
+                        attivita[temp.id].executed=true;
+                    }
                     return true;
                 }
             }
@@ -239,22 +239,25 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
             attivita[messaggi[idMessage].idActivity].executed=true;
             return true;
         }
-        //set the message executed to true and the gateway to true;
-        //check if the gateway is stored on the gateway list
-        /*if(controlFlowElementList[temp.idInElement].id==temp.idInElement){
-            if(controlFlowElementList[temp.idInElement].tipo==ElementType.START){
-                messaggi[idMessage].executed=true;
-                return true; 
-            }else if(checkForGatewayCondition(temp.idInElement,temp)){
-                messaggi[idMessage].executed=true;
-                controlFlowElementList[temp.idInElement].executed=true;
-                return true;
-            }
-        }*/
+
         return false;
     }
+function setFalseNextElement(bytes32 idElement) private {
+    controlFlowElementList[idElement].executed=false;
+    for(uint i=0;i<controlFlowElementList[idElement].outgoingActivity.length;i++){
+        if(controlFlowElementList[controlFlowElementList[idElement].outgoingActivity[i]].id==controlFlowElementList[idElement].outgoingActivity[i]){
+            setFalseNextElement(controlFlowElementList[controlFlowElementList[idElement].outgoingActivity[i]].id);
+        }else if(attivita[controlFlowElementList[idElement].outgoingActivity[i]].id==controlFlowElementList[idElement].outgoingActivity[i]){
+                attivita[controlFlowElementList[idElement].outgoingActivity[i]].executed=false;
+                messaggi[attivita[controlFlowElementList[idElement].outgoingActivity[i]].messageIn].executed=false;
+                if(messaggi[attivita[controlFlowElementList[idElement].outgoingActivity[i]].messageOut].id!=bytes32(0)){
+                    messaggi[attivita[controlFlowElementList[idElement].outgoingActivity[i]].messageOut].executed=false;
+                }
+        }
+    }
+}
 //Che the condition for different gateway
-    function checkForGatewayCondition(bytes32 _idInElement,Activity memory currentActivity) view private returns(bool){
+    function checkForGatewayCondition(bytes32 _idInElement,Activity memory currentActivity) private returns(bool){
         //Check the condition for an split exclusie gateway
         //It have to controll the previous task and the condition on the edge 
 
@@ -268,7 +271,7 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
                         return false;
                     }
                 }
-                if(checkEdgesCondition(currentActivity)){
+                if(checkEdgesConditionOnlyId(currentActivity.id)){
                     return true;
                 }
             }
@@ -289,8 +292,24 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
         if(gateway.tipo==ElementType.PAR_SPLIT){
             if(attivita[gateway.incomingActivity[0]].executed){
                 return true;
-            }
+            }else if (controlFlowElementList[gateway.incomingActivity[0]].tipo==ElementType.EX_SPLIT){
+                ControlFlowElement memory temp=controlFlowElementList[gateway.incomingActivity[0]];
+                 //this is to check the previous task
+                if(attivita[temp.incomingActivity[0]].executed){
+                    //this is to check the condition on the edge
+                    for(uint i=0;i<temp.outgoingActivity.length;i++){
+                        if(attivita[temp.outgoingActivity[i]].executed){
+                            return false;
+                        }
+                    }
+                    if(checkEdgesConditionOnlyId(gateway.id)){
+                        controlFlowElementList[gateway.incomingActivity[0]].executed=true;
+                        return true;
+                    }
+                }
             return false;
+            }
+        return false;
         }
         //check if the element is a parallel join gateway
         //check if all the previous task are executed
@@ -318,7 +337,7 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
         return false;
     }
 //to check the condition It take in input the id of the in element of the gateway and the current activity 
-    function checkEdgesCondition(Activity memory currentActivity) private view returns (bool){
+  /*  function checkEdgesCondition(Activity memory currentActivity) private view returns (bool){
         //get the edge from the gateway to the task where I execute the message
         EdgeCondition[] memory conditionType=edgeConditionMapping[currentActivity.id];
         for (uint i=0;i<conditionType.length;i++){
@@ -341,6 +360,31 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
         }
         return false;
     }
+*/
+    function checkEdgesConditionOnlyId(bytes32 currentActivity) private view returns (bool){
+        //get the edge from the gateway to the task where I execute the message
+        EdgeCondition[] memory conditionType=edgeConditionMapping[currentActivity];
+        for (uint i=0;i<conditionType.length;i++){
+        //switch case to perform the controll of the attribute and a value
+            if(conditionType[i].condition==ConditionType.GREATER){
+                return greaterThan(conditionType[i].attribute,conditionType[i].comparisonValue);
+            }
+            if(conditionType[i].condition==ConditionType.LESS){
+                return lessThan(conditionType[i].attribute,conditionType[i].comparisonValue);
+            }
+            if(conditionType[i].condition==ConditionType.EQUAL){
+                //require(1==0,"sono in equal");
+                return equal(conditionType[i].attribute,conditionType[i].comparisonValue);
+            }
+            if(conditionType[i].condition==ConditionType.GREATEREQUAL){
+                return greaterThan(conditionType[i].attribute,conditionType[i].comparisonValue) || equal(conditionType[i].attribute,conditionType[i].comparisonValue);
+            }
+            if(conditionType[i].condition==ConditionType.LESSEQUAL){
+                return lessThan(conditionType[i].attribute,conditionType[i].comparisonValue) || equal(conditionType[i].attribute,conditionType[i].comparisonValue);
+            }
+        }
+        return false;
+    }
 //quando eseguo un messaggio eseguo questa funzione per assegnare un valore ai vari attributi 
     function insertIntoMap(bytes32 [] memory attributi, bytes32[] memory value) private {
         for(uint i=0;i<attributi.length;i++){
@@ -352,7 +396,12 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
     function executeSelectMessage(bytes32 idActivity,bytes32 idMessage,bytes32 keyMapping, address source, address target,bytes32 [] memory attributi, bytes32[] memory value) public {
         setSelecMessage(idMessage, keyMapping, source, target, idActivity);
         require(checkTheExecution(idMessage),"errore nella validazione dell'esecuzione");
-
+        Activity memory temp=attivita[idActivity];
+         if(attivita[temp.idOutElement].id==temp.idOutElement){
+            attivita[temp.idOutElement].executed=false;
+        }else if(controlFlowElementList[temp.idOutElement].id==temp.idOutElement){
+            setFalseNextElement(controlFlowElementList[temp.idOutElement].id);
+        }
         insertIntoMap(attributi, value);
          emit functionDone("Messagge executed");
     }
@@ -386,35 +435,6 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
 
     function equal(bytes32 attribute,bytes32 value)private view returns (bool){
         return attributiValue[attribute]==value;
-    }
-    function getAttivita(bytes32 id,
-                        bytes32 name,
-                        bytes32 initiator,
-                        bytes32 target,
-                        bytes32 idInElement,
-                        bytes32 idOutElement,
-                        bytes32 messageIn,
-                        bytes32 messageOut,
-                        bool executed)
-    public pure returns(Activity  memory){
-       
-        return Activity(id,name,initiator,target,idInElement,idOutElement,messageIn,messageOut,executed);
-    }
-    function getMessage(bytes32 id,
-                        bytes32 nome,
-                        bytes32 mappingKey,
-                        bytes32[] memory selectedAttr,
-                        address sourceParticipant,
-                        address targetParticipant,
-                        bytes32 idActivity,
-                        bool executed)
-    public pure returns (Message memory){
-        return Message(id,nome,mappingKey,selectedAttr,sourceParticipant,targetParticipant,idActivity,executed);
-    }
-
-    function getFlow(bytes32 id,ElementType tipo,bytes32 [] memory incomingActivity, bytes32[] memory outgoingActivity,bool executed)
-    public pure returns (ControlFlowElement memory){
-        return ControlFlowElement(id,tipo,incomingActivity,outgoingActivity,executed);
     }
     function intToBytes(uint256 n)public pure returns(bytes32){
         return bytes32(n);
