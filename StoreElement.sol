@@ -425,6 +425,7 @@ function checkForNextGatewayCondition(bytes32 _idInElement) private returns (boo
         setComControlFlowElement(_contolFlowElement,someEdgeCondition);
         require(checkTheExecution(_message.id),"errore nella validazione dell'esecuzione");
         insertIntoMap(attributi, value);
+        emit functionDone("Messagge executed");
     }
 //how to check the control flow element if i can add it to during the execution ??
     function setComControlFlowElement(ControlFlowElement[] memory _controlFlowElement,EdgeCondition[] memory _someEdgeCondition)private {
