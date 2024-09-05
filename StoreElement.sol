@@ -26,19 +26,12 @@ contract storeElement{
         bytes32 target;
     }
     mapping(bytes32=>Activity) public attivita;
-
-
-
     //key of the mappig goes into the Activity struct it represent 
     //one generic key for composition, different key for selection
     //the selcted address goes into the message
     mapping(bytes32=>address []) public participants;
-
-
-
 //                       0    ,   1   ,  2    ,    3    ,    4    ,    5     ,     6         
     enum ElementType {START, EX_SPLIT, EX_JOIN, PAR_SPLIT, PAR_JOIN, EVENT_BASED, END}
-
     struct ControlFlowElement{
         bool executed;
         bytes32 id;
@@ -47,8 +40,6 @@ contract storeElement{
         ElementType tipo;
     }
 mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
-    
-
     //type to define one condition 
     //                      0,    1,   2,      3,         4
     enum ConditionType {GREATER,LESS,EQUAL,GREATEREQUAL,LESSEQUAL}
@@ -59,11 +50,8 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
         ConditionType condition;
         bytes32 idActivity;
     }
-
-
     //associate a key to the relative condition
     mapping(bytes32=>EdgeCondition[]) public edgeConditionMapping;
-
     struct Message{
         bool executed;
         bytes32 id;
@@ -80,9 +68,6 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
 //in the case of selection i have different key for different type of message
 //in the case of composition I have a single key for all attributes than the selected attributes goes into the message struct
     mapping(bytes32 =>bytes32[]) public messageAttributes;
-
-
-
 
 
     //mappign attributes with its value
@@ -223,9 +208,8 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
                         attivita[temp.id].executed=true;
                     }
                     return true; 
-                }else if(checkForGatewayCondition(temp.idInElement,temp)){
+                }else if(controlFlowElementList[temp.idInElement].executed && checkForGatewayCondition(temp.idInElement,temp.id)){
                     messaggi[idMessage].executed=true;
-                    controlFlowElementList[temp.idInElement].executed=true;
                     if(attivita[temp.id].messageOut==bytes32(0)){
                         attivita[temp.id].executed=true;
                     }
@@ -239,84 +223,134 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
             attivita[messaggi[idMessage].idActivity].executed=true;
             return true;
         }
-
         return false;
     }
-function setFalseNextElement(bytes32 idElement) private {
-    controlFlowElementList[idElement].executed=false;
-    for(uint i=0;i<controlFlowElementList[idElement].outgoingActivity.length;i++){
-        if(controlFlowElementList[controlFlowElementList[idElement].outgoingActivity[i]].id==controlFlowElementList[idElement].outgoingActivity[i]){
-            setFalseNextElement(controlFlowElementList[controlFlowElementList[idElement].outgoingActivity[i]].id);
-        }else if(attivita[controlFlowElementList[idElement].outgoingActivity[i]].id==controlFlowElementList[idElement].outgoingActivity[i]){
-                attivita[controlFlowElementList[idElement].outgoingActivity[i]].executed=false;
-                messaggi[attivita[controlFlowElementList[idElement].outgoingActivity[i]].messageIn].executed=false;
-                if(messaggi[attivita[controlFlowElementList[idElement].outgoingActivity[i]].messageOut].id!=bytes32(0)){
-                    messaggi[attivita[controlFlowElementList[idElement].outgoingActivity[i]].messageOut].executed=false;
-                }
+
+function setActivityToFalse(bytes32 idActivity) private {
+        attivita[idActivity].executed=false;
+        messaggi[attivita[idActivity].messageIn].executed=false;
+        if(messaggi[attivita[idActivity].messageOut].id!=bytes32(0)){
+            messaggi[attivita[idActivity].messageOut].executed=false;
         }
+}
+function checkNextElement(bytes32 idElement) private {
+    // Check if the element is an activity
+    if (attivita[idElement].id != bytes32(0)) {
+        setActivityToFalse(idElement);
+        return;
+    }
+    // Check if the element is a control flow element and not yet executed
+    //ControlFlowElement storage element = controlFlowElementList[idElement];
+    if (controlFlowElementList[idElement].id != bytes32(0) ) {
+        // Evaluate the gateway condition and update execution status
+        controlFlowElementList[idElement].executed = checkForNextGatewayCondition(idElement);
+
+        // Update the outgoing activities based on the execution status
+        if(checkForNextGatewayCondition(idElement) && controlFlowElementList[idElement].tipo!=ElementType.EX_SPLIT ){
+            for (uint i = 0; i < controlFlowElementList[idElement].outgoingActivity.length; i++) {
+                checkNextElement(controlFlowElementList[idElement].outgoingActivity[i]);
+               // bytes32 outgoingId = controlFlowElementList[idElement].outgoingActivity[i];
+                //controlFlowElementList[outgoingId].executed = checkForNextGatewayCondition(outgoingId);
+            }
+        }
+       
+        return;
+    }
+    // Default case: set the current element and its outgoing activities to false
+    for (uint i = 0; i < controlFlowElementList[idElement].outgoingActivity.length; i++) {
+        checkNextElement(controlFlowElementList[idElement].outgoingActivity[i]);
     }
 }
+
+function checkForNextGatewayCondition(bytes32 _idInElement) private returns (bool) {
+    ControlFlowElement storage gateway = controlFlowElementList[_idInElement];
+
+    // Handle the simple cases first: EX_JOIN, PAR_SPLIT, EVENT_BASED
+    if (
+        gateway.tipo == ElementType.EX_JOIN || 
+        gateway.tipo == ElementType.PAR_SPLIT || 
+        gateway.tipo == ElementType.EVENT_BASED
+    ){
+        return true;
+    }
+    // Handle EX_SPLIT
+    if (gateway.tipo == ElementType.EX_SPLIT) {
+        for (uint i = 0; i < gateway.outgoingActivity.length; i++) {
+            bytes32 outgoingId = gateway.outgoingActivity[i];
+            if (controlFlowElementList[outgoingId].id != bytes32(0)) {
+                controlFlowElementList[outgoingId].executed = checkEdgesConditionOnlyId(outgoingId);
+            }
+        }
+        return true;
+    }
+
+    // Handle PAR_JOIN
+    if (gateway.tipo == ElementType.PAR_JOIN) {
+        for (uint i = 0; i < gateway.incomingActivity.length; i++) {
+            bytes32 incomingId = gateway.incomingActivity[i];
+            if (attivita[incomingId].id != bytes32(0) && !attivita[incomingId].executed) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    return false;
+}
+
 //Che the condition for different gateway
-    function checkForGatewayCondition(bytes32 _idInElement,Activity memory currentActivity) private returns(bool){
+    function checkForGatewayCondition(bytes32 _idInElement,bytes32 currentActivity) private view returns(bool){
         //Check the condition for an split exclusie gateway
         //It have to controll the previous task and the condition on the edge 
-
         ControlFlowElement memory gateway=controlFlowElementList[_idInElement];
-        if(gateway.tipo==ElementType.EX_SPLIT){
+        if(gateway.tipo==ElementType.EX_SPLIT && gateway.executed){
             //this is to check the previous task
-            if(attivita[gateway.incomingActivity[0]].executed){
-                //this is to check the condition on the edge
-                for(uint i=0;i<gateway.outgoingActivity.length;i++){
-                    if(attivita[gateway.outgoingActivity[i]].executed){
-                        return false;
+            if(attivita[gateway.incomingActivity[0]].id!=bytes32(0)){
+                if(attivita[gateway.incomingActivity[0]].executed){
+                    //this is to check the condition on the edge
+                    for(uint i=0;i<gateway.outgoingActivity.length;i++){
+                        if(attivita[gateway.outgoingActivity[i]].executed){
+                            return false;
+                        }
+                    }
+                    if(checkEdgesConditionOnlyId(currentActivity)){
+                        return true;
                     }
                 }
-                if(checkEdgesConditionOnlyId(currentActivity.id)){
-                    return true;
-                }
+                return false; 
             }
-            return false;
         }
         //check if the element is an exclusive gateway 
-        if(gateway.tipo==ElementType.EX_JOIN){
+        if(gateway.tipo==ElementType.EX_JOIN && gateway.executed){
             //the condition is that one of the previous task have to be executed
             for(uint i=0;i<gateway.incomingActivity.length;i++){
-                if(attivita[gateway.incomingActivity[i]].executed){
-                    return true;
+                if(attivita[gateway.incomingActivity[i]].id==gateway.incomingActivity[i]){
+                    if(attivita[gateway.incomingActivity[i]].executed){
+                        return true;
+                    }
                 }
+                
             }
             return false;
         }
         //check if the element is a parallel split gateway
         //the only condition is that the previous task have to be executed
-        if(gateway.tipo==ElementType.PAR_SPLIT){
-            if(attivita[gateway.incomingActivity[0]].executed){
+        if(gateway.tipo==ElementType.PAR_SPLIT && gateway.executed){
+            if(attivita[gateway.incomingActivity[0]].id!=bytes32(0) && attivita[gateway.incomingActivity[0]].executed){
                 return true;
-            }else if (controlFlowElementList[gateway.incomingActivity[0]].tipo==ElementType.EX_SPLIT){
-                ControlFlowElement memory temp=controlFlowElementList[gateway.incomingActivity[0]];
-                 //this is to check the previous task
-                if(attivita[temp.incomingActivity[0]].executed){
-                    //this is to check the condition on the edge
-                    for(uint i=0;i<temp.outgoingActivity.length;i++){
-                        if(attivita[temp.outgoingActivity[i]].executed){
-                            return false;
-                        }
-                    }
-                    if(checkEdgesConditionOnlyId(gateway.id)){
-                        controlFlowElementList[gateway.incomingActivity[0]].executed=true;
-                        return true;
-                    }
-                }
-            return false;
+            }else if(controlFlowElementList[gateway.incomingActivity[0]].id!=bytes32(0) && controlFlowElementList[gateway.incomingActivity[0]].executed){
+                return true;
             }
-        return false;
+            return false;
         }
         //check if the element is a parallel join gateway
         //check if all the previous task are executed
-        if(gateway.tipo==ElementType.PAR_JOIN){
+        if(gateway.tipo==ElementType.PAR_JOIN && gateway.executed){
             for(uint i=0;i<gateway.incomingActivity.length;i++){
-                if(!attivita[gateway.incomingActivity[i]].executed){
-                    return false;
+                if(attivita[gateway.incomingActivity[i]].id!=bytes32(0)){
+                    if(!attivita[gateway.incomingActivity[i]].executed){
+                        return false;
+                    }
                 }
             }
             return true;
@@ -324,7 +358,7 @@ function setFalseNextElement(bytes32 idElement) private {
 
         //check if the element is a event based 
         //al the outgoing has to be not executed 
-        if(gateway.tipo==ElementType.EVENT_BASED){
+        if(gateway.tipo==ElementType.EVENT_BASED && gateway.executed){
             if(attivita[gateway.incomingActivity[0]].executed){
                 for(uint i=0;i<gateway.outgoingActivity.length;i++){
                     if(attivita[gateway.outgoingActivity[i]].executed){
@@ -336,31 +370,9 @@ function setFalseNextElement(bytes32 idElement) private {
         }
         return false;
     }
-//to check the condition It take in input the id of the in element of the gateway and the current activity 
-  /*  function checkEdgesCondition(Activity memory currentActivity) private view returns (bool){
-        //get the edge from the gateway to the task where I execute the message
-        EdgeCondition[] memory conditionType=edgeConditionMapping[currentActivity.id];
-        for (uint i=0;i<conditionType.length;i++){
-        //switch case to perform the controll of the attribute and a value
-            if(conditionType[i].condition==ConditionType.GREATER){
-                return greaterThan(conditionType[i].attribute,conditionType[i].comparisonValue);
-            }
-            if(conditionType[i].condition==ConditionType.LESS){
-                return lessThan(conditionType[i].attribute,conditionType[i].comparisonValue);
-            }
-            if(conditionType[i].condition==ConditionType.EQUAL){
-                return equal(conditionType[i].attribute,conditionType[i].comparisonValue);
-            }
-            if(conditionType[i].condition==ConditionType.GREATEREQUAL){
-                return greaterThan(conditionType[i].attribute,conditionType[i].comparisonValue) || equal(conditionType[i].attribute,conditionType[i].comparisonValue);
-            }
-            if(conditionType[i].condition==ConditionType.LESSEQUAL){
-                return lessThan(conditionType[i].attribute,conditionType[i].comparisonValue) || equal(conditionType[i].attribute,conditionType[i].comparisonValue);
-            }
-        }
-        return false;
-    }
-*/
+
+
+
     function checkEdgesConditionOnlyId(bytes32 currentActivity) private view returns (bool){
         //get the edge from the gateway to the task where I execute the message
         EdgeCondition[] memory conditionType=edgeConditionMapping[currentActivity];
@@ -373,7 +385,6 @@ function setFalseNextElement(bytes32 idElement) private {
                 return lessThan(conditionType[i].attribute,conditionType[i].comparisonValue);
             }
             if(conditionType[i].condition==ConditionType.EQUAL){
-                //require(1==0,"sono in equal");
                 return equal(conditionType[i].attribute,conditionType[i].comparisonValue);
             }
             if(conditionType[i].condition==ConditionType.GREATEREQUAL){
@@ -393,16 +404,16 @@ function setFalseNextElement(bytes32 idElement) private {
     }
 //execute the message in the selection case so 
 //It has to insert the missing field only in the MessageStruct and It has to check for the execution
-    function executeSelectMessage(bytes32 idActivity,bytes32 idMessage,bytes32 keyMapping, address source, address target,bytes32 [] memory attributi, bytes32[] memory value) public {
+    function executeSelectMessage(bytes32 [] memory attributi,bytes32 idActivity,bytes32 idMessage,bytes32 keyMapping, address source, address target, bytes32[] memory value) public {
         setSelecMessage(idMessage, keyMapping, source, target, idActivity);
         require(checkTheExecution(idMessage),"errore nella validazione dell'esecuzione");
         Activity memory temp=attivita[idActivity];
-         if(attivita[temp.idOutElement].id==temp.idOutElement){
-            attivita[temp.idOutElement].executed=false;
-        }else if(controlFlowElementList[temp.idOutElement].id==temp.idOutElement){
-            setFalseNextElement(controlFlowElementList[temp.idOutElement].id);
-        }
         insertIntoMap(attributi, value);
+        if(temp.messageIn==idMessage && temp.messageOut==bytes32(0)){
+            checkNextElement(temp.idOutElement);
+        }else if(temp.messageOut==idMessage){
+            checkNextElement(temp.idOutElement);
+        }
          emit functionDone("Messagge executed");
     }
 //execute the message in the composition case
@@ -424,22 +435,13 @@ function setFalseNextElement(bytes32 idElement) private {
             edgeConditionMapping[_someEdgeCondition[i].idActivity].push(_someEdgeCondition[i]);
         }
     }
-
     function greaterThan(bytes32 attribute,bytes32 value)private view returns (bool){
         return attributiValue[attribute]>value;
     }
-
     function lessThan(bytes32 attribute,bytes32 value)private view returns (bool){
         return attributiValue[attribute]<value;
     }
-
     function equal(bytes32 attribute,bytes32 value)private view returns (bool){
         return attributiValue[attribute]==value;
     }
-    function intToBytes(uint256 n)public pure returns(bytes32){
-        return bytes32(n);
-    }
-    function getListSelectedAttribute(bytes32 idMessage)public view returns(bytes32[] memory){
-        return messaggi[idMessage].selectedAttr;
-    } 
 }
