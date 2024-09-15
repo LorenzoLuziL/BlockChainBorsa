@@ -30,8 +30,8 @@ contract storeElement{
     //one generic key for composition, different key for selection
     //the selcted address goes into the message
     mapping(bytes32=>address []) public participants;
-//                       0    ,   1   ,  2    ,    3    ,    4    ,    5     ,     6         
-    enum ElementType {START, EX_SPLIT, EX_JOIN, PAR_SPLIT, PAR_JOIN, EVENT_BASED, END}
+//                       0    ,   1   ,  2    ,    3    ,    4    ,    5     ,     6    7     
+    enum ElementType {START, EX_SPLIT, EX_JOIN, PAR_SPLIT, PAR_JOIN, EVENT_BASED, END,TEMP}
     struct ControlFlowElement{
         bool executed;
         bytes32 id;
@@ -136,7 +136,7 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
     }
 
 //function to set the message in the selection case
-    function setSelecMessage(bytes32 idMessage,bytes32 keyMapping, address source, address target,bytes32 idActivity)public{
+   /* function setSelecMessage(bytes32 idMessage,bytes32 keyMapping, address source, address target,bytes32 idActivity)public{
         require(messaggi[idMessage].id==idMessage,"controllo id messaggio");
         require(attivita[idActivity].id==idActivity,"controllo id Attivita");
         require(checkKeyMessage(keyMapping),"controllo mapping");
@@ -146,7 +146,7 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
         messaggi[idMessage].mappingKey=keyMapping;
         messaggi[idMessage].sourceParticipant=source;
         messaggi[idMessage].targetParticipant=target;
-    }
+    }*/
 //Per controllare se la chiave appartiene alla chiavi inserite in fase di generazione vado a controllare 
 //se a quella chiave è inserito un almeno un indirizzo.
 //check if the passed key has at least one element
@@ -269,7 +269,8 @@ function checkForNextGatewayCondition(bytes32 _idInElement) private returns (boo
     if (
         gateway.tipo == ElementType.EX_JOIN || 
         gateway.tipo == ElementType.PAR_SPLIT || 
-        gateway.tipo == ElementType.EVENT_BASED
+        gateway.tipo == ElementType.EVENT_BASED ||
+        gateway.tipo == ElementType.TEMP || gateway.tipo == ElementType.END 
     ){
         return true;
     }
@@ -404,7 +405,7 @@ function checkForNextGatewayCondition(bytes32 _idInElement) private returns (boo
     }
 //execute the message in the selection case so 
 //It has to insert the missing field only in the MessageStruct and It has to check for the execution
-    function executeSelectMessage(bytes32 [] memory attributi,bytes32 idActivity,bytes32 idMessage,bytes32 keyMapping, address source, address target, bytes32[] memory value) public {
+  /*  function executeSelectMessage(bytes32 [] memory attributi,bytes32 idActivity,bytes32 idMessage,bytes32 keyMapping, address source, address target, bytes32[] memory value) public {
         setSelecMessage(idMessage, keyMapping, source, target, idActivity);
         require(checkTheExecution(idMessage),"errore nella validazione dell'esecuzione");
         Activity memory temp=attivita[idActivity];
@@ -415,7 +416,7 @@ function checkForNextGatewayCondition(bytes32 _idInElement) private returns (boo
             checkNextElement(temp.idOutElement);
         }
          emit functionDone("Messagge executed");
-    }
+    }*/
 //execute the message in the composition case
 //It has to set all the information reguarding the activity all the information for the message and 
 //It has to check for the execution
@@ -424,13 +425,19 @@ function checkForNextGatewayCondition(bytes32 _idInElement) private returns (boo
         setCompMessage(_message);
         setComControlFlowElement(_contolFlowElement,someEdgeCondition);
         require(checkTheExecution(_message.id),"errore nella validazione dell'esecuzione");
+        Activity memory temp=attivita[_activity.id];
         insertIntoMap(attributi, value);
+        if(temp.messageIn==_message.id && temp.messageOut==bytes32(0)){
+            checkNextElement(temp.idOutElement);
+        }else if(temp.messageOut==_message.id){
+            checkNextElement(temp.idOutElement);
+        }
         emit functionDone("Messagge executed");
     }
 //how to check the control flow element if i can add it to during the execution ??
     function setComControlFlowElement(ControlFlowElement[] memory _controlFlowElement,EdgeCondition[] memory _someEdgeCondition)private {
-        if(_controlFlowElement.length>0){
-            controlFlowElementList[_controlFlowElement[0].id]=_controlFlowElement[0];
+        for(uint i=0;i<_controlFlowElement.length;i++){
+            controlFlowElementList[_controlFlowElement[i].id]=_controlFlowElement[i];
         }
         for(uint i=0;i<_someEdgeCondition.length;i++){
             edgeConditionMapping[_someEdgeCondition[i].idActivity].push(_someEdgeCondition[i]);
