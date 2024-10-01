@@ -1,123 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
-
-contract storeElement{
-    event functionDone(string);
-    //id of the element when a new element is created it takes an id
-    //for every element I have an Id 
-
-//id: identifier
-//name: name of the  task
-//initiator: Participant that send the message
-//target: participant that receive the message 
-//idInElement: element that point to this task
-//idOutElement: pointed element 
-//message: id of the message 
-//executed: if the activity was executed 
-    struct Activity{
-        bool executed;
-        bytes32 id;
-        bytes32 idInElement;
-        bytes32 idOutElement;
-        bytes32 initiator;
-        bytes32 messageIn;//message of the initiator(sopra)
-        bytes32 messageOut;//message of the target(sotto)
-        bytes32 name;
-        bytes32 target;
-        bool tempState;
-    }
-    mapping(bytes32=>Activity) public attivita;
-    //key of the mappig goes into the Activity struct it represent 
-    //one generic key for composition, different key for selection
-    //the selcted address goes into the message
-    mapping(bytes32=>address []) public participants;
-//                       0    ,   1   ,  2    ,    3    ,    4    ,    5     ,     6    7     
-    enum ElementType {START, EX_SPLIT, EX_JOIN, PAR_SPLIT, PAR_JOIN, EVENT_BASED, END,TEMP}
-    struct ControlFlowElement{
-        bool executed;
-        bytes32 id;
-        bytes32 [] incomingActivity;
-        bytes32 [] outgoingActivity;
-        ElementType tipo;
-    }
-mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
-    //type to define one condition 
-    //                      0,    1,   2,      3,         4
-    enum ConditionType {GREATER,LESS,EQUAL,GREATEREQUAL,LESSEQUAL}
-    //struct to represent the condition with the parameter of the condition
-    struct EdgeCondition{
-        bytes32 attribute;
-        bytes32 comparisonValue;
-        ConditionType condition;
-        bytes32 idActivity;
-    }
-    //associate a key to the relative condition
-    mapping(bytes32=>EdgeCondition[]) public edgeConditionMapping;
-    struct Message{
-        bool executed;
-        bytes32 id;
-        bytes32 idActivity;//It is used to see the activity associeted to the message from the message perspective
-        bytes32 mappingKey;// key of attributes mapping
-        bytes32 name;
-        bytes32 [] selectedAttr;//this field is used in the case of composition 
-        address sourceParticipant;
-        address targetParticipant;//maybe useless
-        bool tempState;
-    }
-    mapping(bytes32=>Message)public messaggi;
-
-//mapping to represent a message with its attribute 
-//in the case of selection i have different key for different type of message
-//in the case of composition I have a single key for all attributes than the selected attributes goes into the message struct
-    mapping(bytes32 =>bytes32[]) public messageAttributes;
-
-
-    //mappign attributes with its value
-    mapping(bytes32=>bytes32) public attributiValue ;
-    //struct used only to pass the participant information to the contract 
-    struct PartecipantRoles{
-        address [] addr;
-        bytes32 keyMapping;
-    }   
-    //struct used only to pass the message and the attributes to the contract
-    struct MessageAttributes{
-        bytes32 [] attributes;
-        bytes32 keyMapping;
-    }
-
-    struct SubChor{
-        bool executed;
-        bytes32 id;
-        bytes32 [] elementId;
-    }
-    mapping(bytes32=>SubChor) public subChoList;
-    event FunctionDone (bytes32 messaggeId);
-    // When i create the contract i passed all the element in the choreography in the selection case i have almost all element populated 
-    function setInformation(Activity [] memory allActivities,Message [] memory allMessages,PartecipantRoles[] memory participantList,
-    MessageAttributes[] memory messagesAttributeList,ControlFlowElement[] memory allControlFlowElement,EdgeCondition[] memory edgeCondition,SubChor[] memory _subChoList) public{
-        for (uint i=0;i<allActivities.length;i++){
-            attivita[allActivities[i].id]=allActivities[i];
-        }
-        for (uint i=0;i<allMessages.length;i++){
-            messaggi[allMessages[i].id]=allMessages[i];
-        }
-        for(uint i=0;i<participantList.length;i++){
-            participants[participantList[i].keyMapping]=participantList[i].addr;
-        }
-        for(uint i=0;i<messagesAttributeList.length;i++){
-            messageAttributes[messagesAttributeList[i].keyMapping]=messagesAttributeList[i].attributes;
-        }
-        for(uint i=0;i<edgeCondition.length;i++){
-            edgeConditionMapping[edgeCondition[i].idActivity].push(edgeCondition[i]);
-        }
-        for(uint i=0;i<allControlFlowElement.length;i++){
-            controlFlowElementList[allControlFlowElement[i].id]=allControlFlowElement[i];
-        }
-        for(uint i=0;i<_subChoList.length;i++){
-            subChoList[_subChoList[i].id]=_subChoList[i];
-        }
-        emit functionDone("Resources Loaded");
-    }
+import "./contractMemory.sol";
+contract contractLogic is contractMemory{
 
 //function to set the activity in the composition case 
 //for the selection case I already have all the data so it is useless
@@ -146,21 +30,6 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
         messaggi[_message.id]=_message;
     }
 
-//function to set the message in the selection case
-   /* function setSelecMessage(bytes32 idMessage,bytes32 keyMapping, address source, address target,bytes32 idActivity)public{
-        require(messaggi[idMessage].id==idMessage,"controllo id messaggio");
-        require(attivita[idActivity].id==idActivity,"controllo id Attivita");
-        require(checkKeyMessage(keyMapping),"controllo mapping");
-        require(checkAddressParticipants(attivita[idActivity].initiator,source),"check sull'initiator");
-        require(checkAddressParticipants(attivita[idActivity].target,target),"check sull'target");
-        require(!messaggi[idMessage].executed,"already executed");
-        messaggi[idMessage].mappingKey=keyMapping;
-        messaggi[idMessage].sourceParticipant=source;
-        messaggi[idMessage].targetParticipant=target;
-    }*/
-//Per controllare se la chiave appartiene alla chiavi inserite in fase di generazione vado a controllare 
-//se a quella chiave è inserito un almeno un indirizzo.
-//check if the passed key has at least one element
     function checkKeyParicipants(bytes32 key)private view returns(bool){
         return participants[key].length>0;
     }
@@ -177,17 +46,10 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
         return false;
     }
 
-    function getListParticipant(bytes32 key)public view returns (address[] memory){
-        return participants[key];
-    }
-
 //controllo se per quel messaggio ci sono degli attributi inseriti 
 //se non ci sono attributi significa che si cerca di utilizzare un messaggio inserito durante la fase di running 
     function checkKeyMessage(bytes32 key) public view returns(bool){
         return messageAttributes[key].length>0;
-    }
-    function getListAttributeForKey(bytes32 key)public view returns(bytes32[] memory){
-        return messageAttributes[key];
     }
 
 //controllo se quell'attributo è presente in uno specifico mapping 
@@ -215,6 +77,7 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
             }else if (controlFlowElementList[temp.idInElement].id==temp.idInElement){
                 if(controlFlowElementList[temp.idInElement].tipo==ElementType.START){
                     messaggi[idMessage].executed=true;
+                    controlFlowElementList[temp.idInElement].executed=true;
                     if(attivita[temp.id].messageOut==bytes32(0)){
                         attivita[temp.id].executed=true;
                     }
@@ -268,10 +131,6 @@ function checkNextElement(bytes32 idElement) private {
         }
         return;
     }
-    // Default case: set the current element and its outgoing activities to false
-    for (uint i = 0; i < controlFlowElementList[idElement].outgoingActivity.length; i++) {
-        checkNextElement(controlFlowElementList[idElement].outgoingActivity[i]);
-    }
 }
 
 function checkForNextGatewayCondition(bytes32 _idInElement) private returns (bool) {
@@ -318,7 +177,7 @@ function checkForNextGatewayCondition(bytes32 _idInElement) private returns (boo
 }
 
 //Che the condition for different gateway
-    function checkForGatewayCondition(bytes32 _idInElement,bytes32 currentActivity) private view returns(bool){
+    function checkForGatewayCondition(bytes32 _idInElement,bytes32 currentActivity) private  returns(bool){
         //Check the condition for an split exclusie gateway
         //It have to controll the previous task and the condition on the edge 
         ControlFlowElement memory gateway=controlFlowElementList[_idInElement];
@@ -378,14 +237,23 @@ function checkForNextGatewayCondition(bytes32 _idInElement) private returns (boo
         //check if the element is a event based 
         //al the outgoing has to be not executed 
         if(gateway.tipo==ElementType.EVENT_BASED && gateway.executed){
-            if(attivita[gateway.incomingActivity[0]].executed){
+            if(attivita[gateway.incomingActivity[0]].executed || controlFlowElementList[gateway.incomingActivity[0]].executed){
                 for(uint i=0;i<gateway.outgoingActivity.length;i++){
                     if(attivita[gateway.outgoingActivity[i]].executed){
                         return false;
+                    }else{
+                        attivita[gateway.outgoingActivity[i]].executed=false;
+                        attivita[gateway.outgoingActivity[i]].tempState=false;
+                        messaggi[attivita[gateway.outgoingActivity[i]].messageIn].executed=false;
+                        messaggi[attivita[gateway.outgoingActivity[i]].messageIn].tempState=false;
+                        if(messaggi[attivita[gateway.outgoingActivity[i]].messageOut].id!=bytes32(0)){
+                            messaggi[attivita[gateway.outgoingActivity[i]].messageOut].executed=false;
+                            messaggi[attivita[gateway.outgoingActivity[i]].messageOut].tempState=false;
+                        }
                     }
                 }
+                return true;
             }
-            return true;
         }
         return false;
     }
@@ -438,7 +306,7 @@ function checkForNextGatewayCondition(bytes32 _idInElement) private returns (boo
 //execute the message in the composition case
 //It has to set all the information reguarding the activity all the information for the message and 
 //It has to check for the execution
-    function executeCompMessage(Activity memory _activity,Message memory _message,bytes32 [] memory attributi, bytes32[] memory value,ControlFlowElement[] memory _contolFlowElement,EdgeCondition[] memory someEdgeCondition,bytes32 idSubCho) public {
+    function executeCompMessage(Activity memory _activity,Message memory _message,bytes32 [] memory attributi, bytes32[] memory value,ControlFlowElement[] memory _contolFlowElement,EdgeCondition[] memory someEdgeCondition) public {
         setCompActivity(_activity);
         setCompMessage(_message);
         setComControlFlowElement(_contolFlowElement,someEdgeCondition);
@@ -450,21 +318,7 @@ function checkForNextGatewayCondition(bytes32 _idInElement) private returns (boo
         }else if(temp.messageOut==_message.id){
             checkNextElement(temp.idOutElement);
         }
-        if(idSubCho!=bytes32(0)){
-            checkSubCho(idSubCho);
-        }
         emit functionDone("Messagge executed");
-    }
-    function checkSubCho(bytes32 idSubCho) public{
-        for(uint i=0;i<subChoList[idSubCho].elementId.length;i++){
-            if(!attivita[subChoList[idSubCho].elementId[i]].executed){
-                return;
-            }
-        }
-        subChoList[idSubCho].executed=true;
-    }
-    function subChoElement(bytes32 id,uint i)public view returns(bytes32){
-        return subChoList[id].elementId[i];
     }
 //how to check the control flow element if i can add it to during the execution ??
     function setComControlFlowElement(ControlFlowElement[] memory _controlFlowElement,EdgeCondition[] memory _someEdgeCondition)private {
