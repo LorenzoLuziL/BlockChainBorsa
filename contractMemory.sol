@@ -3,10 +3,35 @@ pragma solidity >=0.8.0;
 
 contract contractMemory{
 
-        event functionDone(string);
+
+    struct MaxiStruct{
+        mapping(bytes32=>Activity) attivita;
+        mapping(bytes32=>address []) participants;
+        mapping(bytes32=>ControlFlowElement) controlFlowElementList;
+        mapping(bytes32=>EdgeCondition[]) edgeConditionMapping;
+        mapping(bytes32=>Message) messaggi;
+        mapping(bytes32 =>bytes32[]) messageAttributes;
+        mapping(bytes32=>bytes32) attributiValue ;
+    }
+    struct ListHash{
+        uint256 hashIdInstance;
+    }
+    mapping(uint256=>ListHash[]) idToInstanceList;
+
+    mapping(uint256=>MaxiStruct)  singleIstanceToMemory;   
+       
+    event functionDone(string);
     //id of the element when a new element is created it takes an id
     //for every element I have an Id 
-
+    function attivita(uint256 hashIdInstance,bytes32 idActivity)public view returns(Activity memory){
+        return singleIstanceToMemory[hashIdInstance].attivita[idActivity];
+    }
+    function messaggi(uint256 hashIdInstance,bytes32 idMessagge)public view returns(Message memory){
+        return singleIstanceToMemory[hashIdInstance].messaggi[idMessagge];
+    }
+    function controlFlowElementList(uint256 hashIdInstance,bytes32 idControlFlowElement)public view returns(ControlFlowElement memory){
+        return singleIstanceToMemory[hashIdInstance].controlFlowElementList[idControlFlowElement];
+    }
 //id: identifier
 //name: name of the  task
 //initiator: Participant that send the message
@@ -27,11 +52,11 @@ contract contractMemory{
         bytes32 target;
         bool tempState;
     }
-    mapping(bytes32=>Activity) public attivita;
+
     //key of the mappig goes into the Activity struct it represent 
     //one generic key for composition, different key for selection
     //the selcted address goes into the message
-    mapping(bytes32=>address []) public participants;
+
 //                       0    ,   1   ,  2    ,    3    ,    4    ,    5     ,     6    7     
     enum ElementType {START, EX_SPLIT, EX_JOIN, PAR_SPLIT, PAR_JOIN, EVENT_BASED, END,TEMP}
     struct ControlFlowElement{
@@ -41,7 +66,7 @@ contract contractMemory{
         bytes32 [] outgoingActivity;
         ElementType tipo;
     }
-mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
+
     //type to define one condition 
     //                      0,    1,   2,      3,         4
     enum ConditionType {GREATER,LESS,EQUAL,GREATEREQUAL,LESSEQUAL}
@@ -53,7 +78,7 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
         bytes32 idActivity;
     }
     //associate a key to the relative condition
-    mapping(bytes32=>EdgeCondition[]) public edgeConditionMapping;
+
     struct Message{
         bool executed;
         bytes32 id;
@@ -65,16 +90,13 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
         address targetParticipant;//maybe useless
         bool tempState;
     }
-    mapping(bytes32=>Message)public messaggi;
+
 
 //mapping to represent a message with its attribute 
 //in the case of selection i have different key for different type of message
 //in the case of composition I have a single key for all attributes than the selected attributes goes into the message struct
-    mapping(bytes32 =>bytes32[]) public messageAttributes;
-
-
     //mappign attributes with its value
-    mapping(bytes32=>bytes32) public attributiValue ;
+
     //struct used only to pass the participant information to the contract 
     struct PartecipantRoles{
         address [] addr;
@@ -89,34 +111,30 @@ mapping(bytes32=>ControlFlowElement) public controlFlowElementList;
     event FunctionDone (bytes32 messaggeId);
     // When i create the contract i passed all the element in the choreography in the selection case i have almost all element populated 
     function setInformation(Activity [] memory allActivities,Message [] memory allMessages,PartecipantRoles[] memory participantList,
-    MessageAttributes[] memory messagesAttributeList,ControlFlowElement[] memory allControlFlowElement,EdgeCondition[] memory edgeCondition) public{
+    MessageAttributes[] memory messagesAttributeList,ControlFlowElement[] memory allControlFlowElement,EdgeCondition[] memory edgeCondition,
+    uint256 idInstance,uint256 hashIdInstance) public{
+
         for (uint i=0;i<allActivities.length;i++){
-            attivita[allActivities[i].id]=allActivities[i];
+            singleIstanceToMemory[hashIdInstance].attivita[allActivities[i].id]=allActivities[i];
         }
         for (uint i=0;i<allMessages.length;i++){
-            messaggi[allMessages[i].id]=allMessages[i];
+            singleIstanceToMemory[hashIdInstance].messaggi[allMessages[i].id]=allMessages[i];
         }
         for(uint i=0;i<participantList.length;i++){
-            participants[participantList[i].keyMapping]=participantList[i].addr;
+            singleIstanceToMemory[hashIdInstance].participants[participantList[i].keyMapping]=participantList[i].addr;
         }
         for(uint i=0;i<messagesAttributeList.length;i++){
-            messageAttributes[messagesAttributeList[i].keyMapping]=messagesAttributeList[i].attributes;
+            singleIstanceToMemory[hashIdInstance].messageAttributes[messagesAttributeList[i].keyMapping]=messagesAttributeList[i].attributes;
         }
         for(uint i=0;i<edgeCondition.length;i++){
-            edgeConditionMapping[edgeCondition[i].idActivity].push(edgeCondition[i]);
+            singleIstanceToMemory[hashIdInstance].edgeConditionMapping[edgeCondition[i].idActivity].push(edgeCondition[i]);
         }
         for(uint i=0;i<allControlFlowElement.length;i++){
-            controlFlowElementList[allControlFlowElement[i].id]=allControlFlowElement[i];
+            singleIstanceToMemory[hashIdInstance].controlFlowElementList[allControlFlowElement[i].id]=allControlFlowElement[i];
         }
+        ListHash memory temp;
+        temp.hashIdInstance=hashIdInstance;
+        idToInstanceList[idInstance].push(temp);
         emit functionDone("Resources Loaded");
     }
-
-
-function getListParticipant(bytes32 key)public view returns (address[] memory){
-        return participants[key];
-    }
-    function getListAttributeForKey(bytes32 key)public view returns(bytes32[] memory){
-        return messageAttributes[key];
-    }
-
 }
