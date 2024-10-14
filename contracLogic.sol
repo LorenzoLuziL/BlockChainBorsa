@@ -290,8 +290,6 @@ function checkForNextGatewayCondition(bytes32 _idInElement,uint256 hashInstance)
     bytes32 [] memory attributi, bytes32[] memory value,ControlFlowElement[] memory _contolFlowElement,
     EdgeCondition[] memory someEdgeCondition,Activity[] memory nextActivities,
     Message[] memory newMessage,uint256 hashInstance) public {
-        setNextActivities(nextActivities,hashInstance);
-        setNewMessage(newMessage,hashInstance);
         setCompActivity(_activity,hashInstance);
         setCompMessage(_message,hashInstance);
         setComControlFlowElement(_contolFlowElement,someEdgeCondition,hashInstance);
