@@ -4,7 +4,7 @@ pragma solidity >=0.8.0;
 contract contractMemory{
 
 
-    struct MaxiStruct{
+    struct Instance{
         mapping(bytes32=>Activity) attivita;
         mapping(bytes32=>address []) participants;
         mapping(bytes32=>ControlFlowElement) controlFlowElementList;
@@ -13,24 +13,22 @@ contract contractMemory{
         mapping(bytes32 =>bytes32[]) messageAttributes;
         mapping(bytes32=>bytes32) attributiValue ;
     }
-    struct ListHash{
-        uint256 hashIdInstance;
-    }
-    mapping(uint256=>ListHash[]) idToInstanceList;
 
-    mapping(uint256=>MaxiStruct)  singleIstanceToMemory;   
+    mapping(bytes32=>bytes32[]) choInstanceList;
+
+    mapping(bytes32=>Instance) istancies;   
        
     event functionDone(string);
     //id of the element when a new element is created it takes an id
     //for every element I have an Id 
-    function attivita(uint256 hashIdInstance,bytes32 idActivity)public view returns(Activity memory){
-        return singleIstanceToMemory[hashIdInstance].attivita[idActivity];
+    function attivita(bytes32 hashIdInstance,bytes32 idActivity)public view returns(Activity memory){
+        return istancies[hashIdInstance].attivita[idActivity];
     }
-    function messaggi(uint256 hashIdInstance,bytes32 idMessagge)public view returns(Message memory){
-        return singleIstanceToMemory[hashIdInstance].messaggi[idMessagge];
+    function messaggi(bytes32 hashIdInstance,bytes32 idMessagge)public view returns(Message memory){
+        return istancies[hashIdInstance].messaggi[idMessagge];
     }
-    function controlFlowElementList(uint256 hashIdInstance,bytes32 idControlFlowElement)public view returns(ControlFlowElement memory){
-        return singleIstanceToMemory[hashIdInstance].controlFlowElementList[idControlFlowElement];
+    function controlFlowElementList(bytes32 hashIdInstance,bytes32 idControlFlowElement)public view returns(ControlFlowElement memory){
+        return istancies[hashIdInstance].controlFlowElementList[idControlFlowElement];
     }
 //id: identifier
 //name: name of the  task
@@ -112,29 +110,29 @@ contract contractMemory{
     // When i create the contract i passed all the element in the choreography in the selection case i have almost all element populated 
     function setInformation(Activity [] memory allActivities,Message [] memory allMessages,PartecipantRoles[] memory participantList,
     MessageAttributes[] memory messagesAttributeList,ControlFlowElement[] memory allControlFlowElement,EdgeCondition[] memory edgeCondition,
-    uint256 idInstance,uint256 hashIdInstance) public{
+    bytes32 idInstance,bytes32 hashIdInstance) public{
 
         for (uint i=0;i<allActivities.length;i++){
-            singleIstanceToMemory[hashIdInstance].attivita[allActivities[i].id]=allActivities[i];
+            istancies[hashIdInstance].attivita[allActivities[i].id]=allActivities[i];
         }
         for (uint i=0;i<allMessages.length;i++){
-            singleIstanceToMemory[hashIdInstance].messaggi[allMessages[i].id]=allMessages[i];
+            istancies[hashIdInstance].messaggi[allMessages[i].id]=allMessages[i];
         }
         for(uint i=0;i<participantList.length;i++){
-            singleIstanceToMemory[hashIdInstance].participants[participantList[i].keyMapping]=participantList[i].addr;
+            istancies[hashIdInstance].participants[participantList[i].keyMapping]=participantList[i].addr;
         }
         for(uint i=0;i<messagesAttributeList.length;i++){
-            singleIstanceToMemory[hashIdInstance].messageAttributes[messagesAttributeList[i].keyMapping]=messagesAttributeList[i].attributes;
+            istancies[hashIdInstance].messageAttributes[messagesAttributeList[i].keyMapping]=messagesAttributeList[i].attributes;
         }
         for(uint i=0;i<edgeCondition.length;i++){
-            singleIstanceToMemory[hashIdInstance].edgeConditionMapping[edgeCondition[i].idActivity].push(edgeCondition[i]);
+            istancies[hashIdInstance].edgeConditionMapping[edgeCondition[i].idActivity].push(edgeCondition[i]);
         }
         for(uint i=0;i<allControlFlowElement.length;i++){
-            singleIstanceToMemory[hashIdInstance].controlFlowElementList[allControlFlowElement[i].id]=allControlFlowElement[i];
+            istancies[hashIdInstance].controlFlowElementList[allControlFlowElement[i].id]=allControlFlowElement[i];
         }
-        ListHash memory temp;
-        temp.hashIdInstance=hashIdInstance;
-        idToInstanceList[idInstance].push(temp);
+
+        choInstanceList[idInstance].push(hashIdInstance);
         emit functionDone("Resources Loaded");
     }
+    
 }
