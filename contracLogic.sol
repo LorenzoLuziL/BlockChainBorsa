@@ -5,31 +5,32 @@ contract contractLogic is contractMemory{
 //function to set the activity in the composition case 
 //for the selection case I already have all the data so it is useless
     function setCompActivity(Activity memory act,bytes32 hashInstance) public {
-     //   require(attivita[act.id].id==act.id,"id Activity");
+     //   require(activities[act.id].id==act.id,"id Activity");
         require(checkKeyParicipants(act.initiator,hashInstance),"key initiator");
         require(checkKeyParicipants(act.target,hashInstance),"key target");
-   //     require(act.messageIn==messaggi[act.messageIn].id,"message in");
-   //     require(act.messageOut==messaggi[act.messageOut].id,"message out");
-        istancies[hashInstance].attivita[act.id]=act;
+   //     require(act.messageIn==messages[act.messageIn].id,"message in");
+   //     require(act.messageOut==messages[act.messageOut].id,"message out");
+        istancies[hashInstance].activities[act.id]=act;
     }
 //function to set the message in the composition case 
     function setCompMessage(Message memory _message,bytes32 hashInstance) public {
-   //     require(messaggi[_message.id].id==_message.id,"id message");
+   //     require(messages[_message.id].id==_message.id,"id message");
         require(checkKeyMessage(_message.mappingKey,hashInstance),"key mapping");
-     //   require(_message.idActivity==attivita[_message.idActivity].id,"id activity message");
-     //   require(checkAddressParticipants(attivita[_message.idActivity].initiator,_message.sourceParticipant),"address initiator");
-       // require(checkAddressParticipants(attivita[_message.idActivity].target,_message.targetParticipant),"address target");
-    //check the attributed selected in the case of composition
+     //   require(_message.idActivity==activities[_message.idActivity].id,"id activity message");
+     //   require(checkAddressParticipants(activities[_message.idActivity].initiator,_message.sourceParticipant),"address initiator");
+       // require(checkAddressParticipants(activities[_message.idActivity].target,_message.targetParticipant),"address target");
+    //check the attributed selected in the case of compoxsition
       /**  for(uint i=0;i<_message.selectedAttr.length;i++){
             require(checkAttribute(_message.mappingKey,_message.selectedAttr[i]),"attribute");
         }
-        require(!messaggi[_message.id].executed,"already executed");**/
-        istancies[hashInstance].messaggi[_message.id]=_message;
+        require(!messages[_message.id].executed,"already executed");**/
+        istancies[hashInstance].messages[_message.id]=_message;
     }
 
     function checkKeyParicipants(bytes32 key,bytes32 hashInstance)private view returns(bool){
         return istancies[hashInstance].participants[key].length>0;
     }
+
 
 //funzione che mi controlla se un indirizzo è presente nella lista di indirizzo fornita all'inizio del generazione del contratto
 //per togliere il for esterno potrei pensare di passare la key del mapping 
@@ -43,8 +44,8 @@ contract contractLogic is contractMemory{
         return false;
     }
 
-//controllo se per quel messaggio ci sono degli attributi inseriti 
-//se non ci sono attributi significa che si cerca di utilizzare un messaggio inserito durante la fase di running 
+//controllo se per quel messageso ci sono degli attributi inseriti 
+//se non ci sono attributi significa che si cerca di utilizzare un messageso inserito durante la fase di running 
     function checkKeyMessage(bytes32 key,bytes32 hashInstance) public view returns(bool){
         return istancies[hashInstance].messageAttributes[key].length>0;
     }
@@ -62,36 +63,36 @@ contract contractLogic is contractMemory{
 
 //Check if i can execute that message 
     function checkTheExecution(bytes32 idMessage,bytes32 hashInstance) private returns (bool){
-        Activity memory temp=istancies[hashInstance].attivita[istancies[hashInstance].messaggi[idMessage].idActivity];
+        Activity memory temp=istancies[hashInstance].activities[istancies[hashInstance].messages[idMessage].idActivity];
         //set the message executed to true
         if(temp.messageIn==idMessage){
             if(istancies[hashInstance].controlFlowElementList[temp.idInElement].id!=bytes32(0) && istancies[hashInstance].controlFlowElementList[temp.idInElement].tipo==ElementType.START){
-                    istancies[hashInstance].messaggi[idMessage].executed=true;
+                    istancies[hashInstance].messages[idMessage].executed=true;
                     istancies[hashInstance].controlFlowElementList[temp.idInElement].executed=true;
-                    if(istancies[hashInstance].attivita[temp.id].messageOut==bytes32(0)){
-                        istancies[hashInstance].attivita[temp.id].executed=true;
+                    if(istancies[hashInstance].activities[temp.id].messageOut==bytes32(0)){
+                        istancies[hashInstance].activities[temp.id].executed=true;
                     }
                     return true; 
-            }else if(istancies[hashInstance].attivita[temp.idInElement].id!=bytes32(0) && istancies[hashInstance].attivita[temp.idInElement].executed==true){
-                    istancies[hashInstance].messaggi[idMessage].executed=true;
-                    if(istancies[hashInstance].attivita[temp.id].messageOut==bytes32(0)){
-                        istancies[hashInstance].attivita[temp.id].executed=true;
+            }else if(istancies[hashInstance].activities[temp.idInElement].id!=bytes32(0) && istancies[hashInstance].activities[temp.idInElement].executed){
+                    istancies[hashInstance].messages[idMessage].executed=true;
+                    if(istancies[hashInstance].activities[temp.id].messageOut==bytes32(0)){
+                        istancies[hashInstance].activities[temp.id].executed=true;
                     }
-                return true;
-            }else  if(checkForGatewayCondition(temp.idInElement,temp.id,hashInstance)){
+                    return true;
+            }else  if(istancies[hashInstance].controlFlowElementList[temp.idInElement].id!=bytes32(0) && checkForGatewayCondition(temp.idInElement,temp.id,hashInstance)){
                     istancies[hashInstance].controlFlowElementList[temp.idInElement].executed=true;
-                    istancies[hashInstance].messaggi[idMessage].executed=true;
-                    if(istancies[hashInstance].attivita[temp.id].messageOut==bytes32(0)){
-                        istancies[hashInstance].attivita[temp.id].executed=true;
+                    istancies[hashInstance].messages[idMessage].executed=true;
+                    if(istancies[hashInstance].activities[temp.id].messageOut==bytes32(0)){
+                        istancies[hashInstance].activities[temp.id].executed=true;
                     }
                     return true;
                 
             }
         }
         //set the message executed to true and the activity to true;
-        if(temp.messageOut==idMessage && istancies[hashInstance].messaggi[temp.messageIn].executed){
-            istancies[hashInstance].messaggi[idMessage].executed=true;
-            istancies[hashInstance].attivita[istancies[hashInstance].messaggi[idMessage].idActivity].executed=true;
+        if(temp.messageOut==idMessage && istancies[hashInstance].messages[temp.messageIn].executed){
+            istancies[hashInstance].messages[idMessage].executed=true;
+            istancies[hashInstance].activities[istancies[hashInstance].messages[idMessage].idActivity].executed=true;
             return true;
         }
         require(1==0,"esco da 1");
@@ -99,18 +100,18 @@ contract contractLogic is contractMemory{
     }
 
 function setActivityToFalse(bytes32 idActivity,bytes32 hashInstance) private {
-        istancies[hashInstance].attivita[idActivity].executed=false;
-        istancies[hashInstance].attivita[idActivity].tempState=true;
-        istancies[hashInstance].messaggi[istancies[hashInstance].attivita[idActivity].messageIn].executed=false;
-        istancies[hashInstance].messaggi[istancies[hashInstance].attivita[idActivity].messageIn].tempState=true;
-        if(istancies[hashInstance].messaggi[istancies[hashInstance].attivita[idActivity].messageOut].id!=bytes32(0)){
-            istancies[hashInstance].messaggi[istancies[hashInstance].attivita[idActivity].messageOut].executed=false;
-            istancies[hashInstance].messaggi[istancies[hashInstance].attivita[idActivity].messageOut].tempState=true;
+        istancies[hashInstance].activities[idActivity].executed=false;
+        istancies[hashInstance].activities[idActivity].tempState=true;
+        istancies[hashInstance].messages[istancies[hashInstance].activities[idActivity].messageIn].executed=false;
+        istancies[hashInstance].messages[istancies[hashInstance].activities[idActivity].messageIn].tempState=true;
+        if(istancies[hashInstance].messages[istancies[hashInstance].activities[idActivity].messageOut].id!=bytes32(0)){
+            istancies[hashInstance].messages[istancies[hashInstance].activities[idActivity].messageOut].executed=false;
+            istancies[hashInstance].messages[istancies[hashInstance].activities[idActivity].messageOut].tempState=true;
         }
 }
 function checkNextElement(bytes32 idElement,bytes32 hashInstance) private {
     // Check if the element is an activity
-    if (istancies[hashInstance].attivita[idElement].id != bytes32(0)) {
+    if (istancies[hashInstance].activities[idElement].id != bytes32(0)) {
         setActivityToFalse(idElement,hashInstance);
         return;
     }
@@ -153,7 +154,7 @@ function checkForNextGatewayCondition(bytes32 _idInElement,bytes32 hashInstance)
                     checkNextElement(outgoingId,hashInstance);
                 }
             }
-            if(istancies[hashInstance].attivita[outgoingId].id !=bytes32(0) && checkEdgesConditionOnlyId(outgoingId,hashInstance)){
+            if(istancies[hashInstance].activities[outgoingId].id !=bytes32(0) && checkEdgesConditionOnlyId(outgoingId,hashInstance)){
                 setActivityToFalse(outgoingId,hashInstance);
             }
         }
@@ -164,7 +165,7 @@ function checkForNextGatewayCondition(bytes32 _idInElement,bytes32 hashInstance)
     if (gateway.tipo == ElementType.PAR_JOIN) {
         for (uint i = 0; i < gateway.incomingActivity.length; i++) {
             bytes32 incomingId = gateway.incomingActivity[i];
-            if (istancies[hashInstance].attivita[incomingId].id != bytes32(0) && !istancies[hashInstance].attivita[incomingId].executed) {
+            if (istancies[hashInstance].activities[incomingId].id != bytes32(0) && !istancies[hashInstance].activities[incomingId].executed) {
                 return false;
             }
         }
@@ -181,11 +182,11 @@ function checkForNextGatewayCondition(bytes32 _idInElement,bytes32 hashInstance)
         ControlFlowElement memory gateway=istancies[hashInstance].controlFlowElementList[_idInElement];
         if(gateway.tipo==ElementType.EX_SPLIT ){
             //this is to check the previous task
-            if(istancies[hashInstance].attivita[gateway.incomingActivity[0]].id!=bytes32(0)){
-                if(istancies[hashInstance].attivita[gateway.incomingActivity[0]].executed){
+            if(istancies[hashInstance].activities[gateway.incomingActivity[0]].id!=bytes32(0)){
+                if(istancies[hashInstance].activities[gateway.incomingActivity[0]].executed){
                     //this is to check the condition on the edge
                     for(uint i=0;i<gateway.outgoingActivity.length;i++){
-                        if(istancies[hashInstance].attivita[gateway.outgoingActivity[i]].executed){
+                        if(istancies[hashInstance].activities[gateway.outgoingActivity[i]].executed){
                             return false;
                         }
                     }
@@ -200,8 +201,8 @@ function checkForNextGatewayCondition(bytes32 _idInElement,bytes32 hashInstance)
         if(gateway.tipo==ElementType.EX_JOIN ){
             //the condition is that one of the previous task have to be executed
             for(uint i=0;i<gateway.incomingActivity.length;i++){
-                if(istancies[hashInstance].attivita[gateway.incomingActivity[i]].id==gateway.incomingActivity[i]){
-                    if(istancies[hashInstance].attivita[gateway.incomingActivity[i]].executed){
+                if(istancies[hashInstance].activities[gateway.incomingActivity[i]].id==gateway.incomingActivity[i]){
+                    if(istancies[hashInstance].activities[gateway.incomingActivity[i]].executed){
                         return true;
                     }
                 }
@@ -212,7 +213,7 @@ function checkForNextGatewayCondition(bytes32 _idInElement,bytes32 hashInstance)
         //check if the element is a parallel split gateway
         //the only condition is that the previous task have to be executed
         if(gateway.tipo==ElementType.PAR_SPLIT ){
-            if(istancies[hashInstance].attivita[gateway.incomingActivity[0]].id!=bytes32(0) && istancies[hashInstance].attivita[gateway.incomingActivity[0]].executed){
+            if(istancies[hashInstance].activities[gateway.incomingActivity[0]].id!=bytes32(0) && istancies[hashInstance].activities[gateway.incomingActivity[0]].executed){
                 return true;
             }else if(istancies[hashInstance].controlFlowElementList[gateway.incomingActivity[0]].id!=bytes32(0) && istancies[hashInstance].controlFlowElementList[gateway.incomingActivity[0]].executed){
                 return true;
@@ -224,8 +225,8 @@ function checkForNextGatewayCondition(bytes32 _idInElement,bytes32 hashInstance)
         //check if all the previous task are executed
         if(gateway.tipo==ElementType.PAR_JOIN ){
             for(uint i=0;i<gateway.incomingActivity.length;i++){
-                if(istancies[hashInstance].attivita[gateway.incomingActivity[i]].id!=bytes32(0)){
-                    if(!istancies[hashInstance].attivita[gateway.incomingActivity[i]].executed){
+                if(istancies[hashInstance].activities[gateway.incomingActivity[i]].id!=bytes32(0)){
+                    if(!istancies[hashInstance].activities[gateway.incomingActivity[i]].executed){
                         return false;
                     }
                 }
@@ -236,18 +237,18 @@ function checkForNextGatewayCondition(bytes32 _idInElement,bytes32 hashInstance)
         //check if the element is a event based 
         //al the outgoing has to be not executed 
         if(gateway.tipo==ElementType.EVENT_BASED){
-            if(istancies[hashInstance].attivita[gateway.incomingActivity[0]].executed || istancies[hashInstance].controlFlowElementList[gateway.incomingActivity[0]].executed){
+            if(istancies[hashInstance].activities[gateway.incomingActivity[0]].executed || istancies[hashInstance].controlFlowElementList[gateway.incomingActivity[0]].executed){
                 for(uint i=0;i<gateway.outgoingActivity.length;i++){
-                    if(istancies[hashInstance].attivita[gateway.outgoingActivity[i]].executed){
+                    if(istancies[hashInstance].activities[gateway.outgoingActivity[i]].executed){
                         return false;
                     }else{
-                        istancies[hashInstance].attivita[gateway.outgoingActivity[i]].executed=false;
-                        istancies[hashInstance].attivita[gateway.outgoingActivity[i]].tempState=false;
-                        istancies[hashInstance].messaggi[istancies[hashInstance].attivita[gateway.outgoingActivity[i]].messageIn].executed=false;
-                        istancies[hashInstance].messaggi[istancies[hashInstance].attivita[gateway.outgoingActivity[i]].messageIn].tempState=false;
-                        if(istancies[hashInstance].messaggi[istancies[hashInstance].attivita[gateway.outgoingActivity[i]].messageOut].id!=bytes32(0)){
-                            istancies[hashInstance].messaggi[istancies[hashInstance].attivita[gateway.outgoingActivity[i]].messageOut].executed=false;
-                            istancies[hashInstance].messaggi[istancies[hashInstance].attivita[gateway.outgoingActivity[i]].messageOut].tempState=false;
+                        istancies[hashInstance].activities[gateway.outgoingActivity[i]].executed=false;
+                        istancies[hashInstance].activities[gateway.outgoingActivity[i]].tempState=false;
+                        istancies[hashInstance].messages[istancies[hashInstance].activities[gateway.outgoingActivity[i]].messageIn].executed=false;
+                        istancies[hashInstance].messages[istancies[hashInstance].activities[gateway.outgoingActivity[i]].messageIn].tempState=false;
+                        if(istancies[hashInstance].messages[istancies[hashInstance].activities[gateway.outgoingActivity[i]].messageOut].id!=bytes32(0)){
+                            istancies[hashInstance].messages[istancies[hashInstance].activities[gateway.outgoingActivity[i]].messageOut].executed=false;
+                            istancies[hashInstance].messages[istancies[hashInstance].activities[gateway.outgoingActivity[i]].messageOut].tempState=false;
                         }
                     }
                 }
@@ -275,7 +276,7 @@ function checkForNextGatewayCondition(bytes32 _idInElement,bytes32 hashInstance)
         }
         return false;
     }
-//quando eseguo un messaggio eseguo questa funzione per assegnare un valore ai vari attributi 
+//quando eseguo un messageso eseguo questa funzione per assegnare un valore ai vari attributi 
     function insertIntoMap(bytes32 [] memory attributi, bytes32[] memory value,bytes32 hashInstance) private {
         for(uint i=0;i<attributi.length;i++){
             istancies[hashInstance].attributiValue[attributi[i]]=value[i];
@@ -286,22 +287,31 @@ function checkForNextGatewayCondition(bytes32 _idInElement,bytes32 hashInstance)
 //It has to set all the information reguarding the activity all the information for the message and 
 //It has to check for the execution
     function executeCompMessage(Activity memory _activity,Message memory _message,
+    ControlFlowElement[] memory currentcontrolFlowElement,
     bytes32 [] memory attributi, bytes32[] memory value,Activity[] memory activityList,
     ControlFlowElement[] memory controlFlowElement,EdgeCondition[] memory edgeCondition,
     Message[] memory messageList, bytes32 hashInstance) public {
-        require(istancies[hashInstance].messaggi[_message.id].executed==false,"already executed");
-        if(istancies[hashInstance].attivita[_activity.id].id==bytes32(0)){
-            setCompActivity(_activity,hashInstance);
-            setCompMessage(_message,hashInstance);
-        }
-
+        require(istancies[hashInstance].messages[_message.id].executed==false,"already executed");
+        
+        setCompActivity(_activity,hashInstance);
+        setCompMessage(_message,hashInstance);
+        setCurrentControlFlow(currentcontrolFlowElement,hashInstance);
         setDiff(activityList,controlFlowElement,edgeCondition,messageList,hashInstance);
         require(checkTheExecution(_message.id,hashInstance),"errore nella validazione dell'esecuzione");
         insertIntoMap(attributi, value,hashInstance);
     if(_activity.idOutElement!=bytes32(0)){
-        checkNextElement(_activity.idOutElement,hashInstance);
+        if(istancies[hashInstance].activities[_activity.id].messageIn==_message.id && istancies[hashInstance].activities[_activity.id].messageOut==bytes32(0)){
+            checkNextElement(_activity.idOutElement,hashInstance);
+        }else if(istancies[hashInstance].activities[_activity.id].messageOut==_message.id){
+            checkNextElement(_activity.idOutElement,hashInstance);
+        }
     }
         emit functionDone("Messagge executed");
+    }
+    function setCurrentControlFlow (ControlFlowElement[] memory controlFlowElement,bytes32 hashIdInstance) private{
+         for(uint i=0;i<controlFlowElement.length;i++){
+            istancies[hashIdInstance].controlFlowElementList[controlFlowElement[i].id]=controlFlowElement[i];
+        }
     }
     function equal(bytes32 attribute,bytes32 value,bytes32 hashInstance)private view returns (bool){
         return istancies[hashInstance].attributiValue[attribute]==value;
@@ -311,10 +321,10 @@ function checkForNextGatewayCondition(bytes32 _idInElement,bytes32 hashInstance)
         Message [] memory allMessages
         ,bytes32 hashIdInstance) internal {
         for(uint i=0;i<activities.length;i++){
-            istancies[hashIdInstance].attivita[activities[i].id]=activities[i];
+            istancies[hashIdInstance].activities[activities[i].id]=activities[i];
         }
         for(uint i=0;i<allMessages.length;i++){
-            istancies[hashIdInstance].messaggi[allMessages[i].id]=allMessages[i];
+            istancies[hashIdInstance].messages[allMessages[i].id]=allMessages[i];
         }
         for(uint i=0;i<allControlFlowElement.length;i++){
             istancies[hashIdInstance].controlFlowElementList[allControlFlowElement[i].id]=allControlFlowElement[i];

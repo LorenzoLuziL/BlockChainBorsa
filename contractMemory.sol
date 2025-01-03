@@ -5,11 +5,11 @@ contract contractMemory{
 
 
     struct Instance{
-        mapping(bytes32=>Activity) attivita;
+        mapping(bytes32=>Activity) activities;
         mapping(bytes32=>address []) participants;
         mapping(bytes32=>ControlFlowElement) controlFlowElementList;
         mapping(bytes32=>EdgeCondition[]) edgeConditionMapping;
-        mapping(bytes32=>Message) messaggi;
+        mapping(bytes32=>Message) messages;
         mapping(bytes32 =>bytes32[]) messageAttributes;
         mapping(bytes32=>bytes32) attributiValue ;
     }
@@ -19,13 +19,17 @@ contract contractMemory{
     mapping(bytes32=>Instance) istancies;   
        
     event functionDone(string);
+
+    function choInstanceListNumber(bytes32 choId) public view returns(uint256){
+        return choInstanceList[choId].length;
+    }
     //id of the element when a new element is created it takes an id
     //for every element I have an Id 
     function attivita(bytes32 hashIdInstance,bytes32 idActivity)public view returns(Activity memory){
-        return istancies[hashIdInstance].attivita[idActivity];
+        return istancies[hashIdInstance].activities[idActivity];
     }
     function messaggi(bytes32 hashIdInstance,bytes32 idMessagge)public view returns(Message memory){
-        return istancies[hashIdInstance].messaggi[idMessagge];
+        return istancies[hashIdInstance].messages[idMessagge];
     }
     function controlFlowElementList(bytes32 hashIdInstance,bytes32 idControlFlowElement)public view returns(ControlFlowElement memory){
         return istancies[hashIdInstance].controlFlowElementList[idControlFlowElement];
@@ -55,8 +59,8 @@ contract contractMemory{
     //one generic key for composition, different key for selection
     //the selcted address goes into the message
 
-//                       0    ,   1   ,  2    ,    3    ,    4    ,    5     ,     6    7     
-    enum ElementType {START, EX_SPLIT, EX_JOIN, PAR_SPLIT, PAR_JOIN, EVENT_BASED, END,TEMP}
+//                       0,     1    ,   2   ,  3    ,    4    ,    5    ,    6     ,     7    8     
+    enum ElementType {NOTSET,START, EX_SPLIT, EX_JOIN, PAR_SPLIT, PAR_JOIN, EVENT_BASED, END,TEMP}
     struct ControlFlowElement{
         bool executed;
         bytes32 id;
@@ -113,10 +117,10 @@ contract contractMemory{
     bytes32 idInstance,bytes32 hashIdInstance) public{
 
         for (uint i=0;i<allActivities.length;i++){
-            istancies[hashIdInstance].attivita[allActivities[i].id]=allActivities[i];
+            istancies[hashIdInstance].activities[allActivities[i].id]=allActivities[i];
         }
         for (uint i=0;i<allMessages.length;i++){
-            istancies[hashIdInstance].messaggi[allMessages[i].id]=allMessages[i];
+            istancies[hashIdInstance].messages[allMessages[i].id]=allMessages[i];
         }
         for(uint i=0;i<participantList.length;i++){
             istancies[hashIdInstance].participants[participantList[i].keyMapping]=participantList[i].addr;
