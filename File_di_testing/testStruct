@@ -1,0 +1,27 @@
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.8.0;
+
+contract testStruct{
+
+    struct StrutturaTest{
+        bytes cane;
+        bytes gatto;
+        bytes pesce;
+    }
+    StrutturaTest private strutturaTest;
+    function insertIntoMap(bytes [] memory attributi, bytes [] memory data) public {
+        for(uint i=0;i<attributi.length;i++){
+            if(keccak256(attributi[i]) == keccak256(abi.encode(("cane")))){
+                strutturaTest.cane=data[i];
+            }else if(keccak256(attributi[i]) == keccak256(abi.encode(("gatto")))){
+                strutturaTest.gatto=data[i];
+            }else if(keccak256(attributi[i]) == keccak256(abi.encode(("pesce")))){
+                strutturaTest.pesce=data[i];
+            }
+        }
+    }
+    function getStruct () public view returns(bytes memory,bytes memory,bytes memory){
+        return (strutturaTest.cane,strutturaTest.gatto,strutturaTest.pesce);
+    }
+    
+}

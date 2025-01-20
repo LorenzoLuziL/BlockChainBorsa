@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract structTestAssembly{
+
+    struct StatoMemoria{
+        bytes32 cane;
+        bytes32 gatto;
+        bytes32 pesce;
+    }
+
+    StatoMemoria private statoMemoria;
+
+    function setStatoMemoria(uint256[] memory _animali, bytes32 [] memory numero) public {
+        assembly{
+            // Slot di base della struttura statoMemoria
+            let baseSlot := statoMemoria.slot
+            // Iterare sull'array degli attributi
+            let len := mload(_animali)
+            for { let i := 0 } lt(i, len) { i := add(i, 1) } {
+                // Calcolare l'attributo corrente
+                let attrib := mload(add(add(_animali, 32), mul(i, 32)))
+                // Confrontare l'attributo corrente con i target e aggiornare la struttura
+                if eq(attrib, 1) {
+                    // Aggiornare campo 'cane'
+                    sstore(baseSlot, mload(add(add(numero, 32), mul(i, 32))))
+                }
+                if eq(attrib, 2) {
+                    // Aggiornare campo 'gatto'
+                    sstore(add(baseSlot, 1), mload(add(add(numero, 32), mul(i, 32))))
+                }
+                if eq(attrib, 3) {
+                    // Aggiornare campo 'pesce'
+                    sstore(add(baseSlot, 2), mload(add(add(numero, 32), mul(i, 32))))
+                }
+            }
+        }
+    }
+
+    function getStatoMemoria() public view returns(bytes32 cane,bytes32 gatto,bytes32 pesce){
+        return(statoMemoria.cane,statoMemoria.gatto,statoMemoria.pesce);
+    }
+
+}
