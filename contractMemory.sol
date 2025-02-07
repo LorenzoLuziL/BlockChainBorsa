@@ -15,7 +15,7 @@ contract contractMemory{
 
     mapping(bytes32=>bytes32[]) choInstanceList;
 
-    mapping(bytes32=>Instance) istancies;   
+    mapping(bytes32=>Instance) instancies;   
        
     event functionDone(string);
 
@@ -25,13 +25,13 @@ contract contractMemory{
     //id of the element when a new element is created it takes an id
     //for every element I have an Id 
     function activity(bytes32 hashIdInstance,bytes32 idActivity)public view returns(Activity memory){
-        return istancies[hashIdInstance].activities[idActivity];
+        return instancies[hashIdInstance].activities[idActivity];
     }
     function message(bytes32 hashIdInstance,bytes32 idMessagge)public view returns(Message memory){
-        return istancies[hashIdInstance].messages[idMessagge];
+        return instancies[hashIdInstance].messages[idMessagge];
     }
     function controlFlowElementList(bytes32 hashIdInstance,bytes32 idControlFlowElement)public view returns(ControlFlowElement memory){
-        return istancies[hashIdInstance].controlFlowElementList[idControlFlowElement];
+        return instancies[hashIdInstance].controlFlowElementList[idControlFlowElement];
     }
 //id: identifier
 //name: name of the  task
@@ -116,22 +116,22 @@ contract contractMemory{
     bytes32 idInstance,bytes32 hashIdInstance) public{
 
         for (uint i=0;i<allActivities.length;i++){
-            istancies[hashIdInstance].activities[allActivities[i].id]=allActivities[i];
+            instancies[hashIdInstance].activities[allActivities[i].id]=allActivities[i];
         }
         for (uint i=0;i<allMessages.length;i++){
-            istancies[hashIdInstance].messages[allMessages[i].id]=allMessages[i];
+            instancies[hashIdInstance].messages[allMessages[i].id]=allMessages[i];
         }
         for(uint i=0;i<participantList.length;i++){
-            istancies[hashIdInstance].participants[participantList[i].keyMapping]=participantList[i].addr;
+            instancies[hashIdInstance].participants[participantList[i].keyMapping]=participantList[i].addr;
         }
         for(uint i=0;i<messagesAttributeList.length;i++){
-            istancies[hashIdInstance].messageAttributes[messagesAttributeList[i].keyMapping]=messagesAttributeList[i].attributes;
+            instancies[hashIdInstance].messageAttributes[messagesAttributeList[i].keyMapping]=messagesAttributeList[i].attributes;
         }
         for(uint i=0;i<edgeCondition.length;i++){
-            istancies[hashIdInstance].edgeConditionMapping[edgeCondition[i].idActivity].push(edgeCondition[i]);
+            instancies[hashIdInstance].edgeConditionMapping[edgeCondition[i].idActivity].push(edgeCondition[i]);
         }
         for(uint i=0;i<allControlFlowElement.length;i++){
-            istancies[hashIdInstance].controlFlowElementList[allControlFlowElement[i].id]=allControlFlowElement[i];
+            instancies[hashIdInstance].controlFlowElementList[allControlFlowElement[i].id]=allControlFlowElement[i];
         }
 
         choInstanceList[idInstance].push(hashIdInstance);
