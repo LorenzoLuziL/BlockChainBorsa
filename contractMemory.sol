@@ -65,7 +65,7 @@ contract contractMemory{
         bytes32 id;
         bytes32 [] incomingActivity;
         bytes32 [] outgoingActivity;
-        ElementType tipo;
+        ElementType elementType;
     }
 
     //type to define one condition 
@@ -109,7 +109,7 @@ contract contractMemory{
         bytes32 keyMapping;
     }
 
-    event FunctionDone (bytes32 messaggeId);
+    
     // When i create the contract i passed all the element in the choreography in the selection case i have almost all element populated 
     function setInformation(Activity [] memory allActivities,Message [] memory allMessages,PartecipantRoles[] memory participantList,
     MessageAttributes[] memory messagesAttributeList,ControlFlowElement[] memory allControlFlowElement,EdgeCondition[] memory edgeCondition,
