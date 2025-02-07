@@ -3,7 +3,6 @@ pragma solidity >=0.8.0;
 
 contract contractMemory{
 
-
     struct Instance{
         mapping(bytes32=>Activity) activities;
         mapping(bytes32=>address []) participants;
@@ -11,7 +10,7 @@ contract contractMemory{
         mapping(bytes32=>EdgeCondition[]) edgeConditionMapping;
         mapping(bytes32=>Message) messages;
         mapping(bytes32 =>bytes32[]) messageAttributes;
-        mapping(bytes32=>bytes32) attributiValue ;
+        mapping(bytes32=>bytes32) attributeValue ;
     }
 
     mapping(bytes32=>bytes32[]) choInstanceList;
@@ -25,10 +24,10 @@ contract contractMemory{
     }
     //id of the element when a new element is created it takes an id
     //for every element I have an Id 
-    function attivita(bytes32 hashIdInstance,bytes32 idActivity)public view returns(Activity memory){
+    function activity(bytes32 hashIdInstance,bytes32 idActivity)public view returns(Activity memory){
         return istancies[hashIdInstance].activities[idActivity];
     }
-    function messaggi(bytes32 hashIdInstance,bytes32 idMessagge)public view returns(Message memory){
+    function message(bytes32 hashIdInstance,bytes32 idMessagge)public view returns(Message memory){
         return istancies[hashIdInstance].messages[idMessagge];
     }
     function controlFlowElementList(bytes32 hashIdInstance,bytes32 idControlFlowElement)public view returns(ControlFlowElement memory){

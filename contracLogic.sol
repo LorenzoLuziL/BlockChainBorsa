@@ -279,7 +279,7 @@ function checkForNextGatewayCondition(bytes32 _idInElement,bytes32 hashInstance)
 //quando eseguo un messageso eseguo questa funzione per assegnare un valore ai vari attributi 
     function insertIntoMap(bytes32 [] memory attributi, bytes32[] memory value,bytes32 hashInstance) private {
         for(uint i=0;i<attributi.length;i++){
-            istancies[hashInstance].attributiValue[attributi[i]]=value[i];
+            istancies[hashInstance].attributeValue[attributi[i]]=value[i];
         }
     }
 
@@ -314,7 +314,7 @@ function checkForNextGatewayCondition(bytes32 _idInElement,bytes32 hashInstance)
         }
     }
     function equal(bytes32 attribute,bytes32 value,bytes32 hashInstance)private view returns (bool){
-        return istancies[hashInstance].attributiValue[attribute]==value;
+        return istancies[hashInstance].attributeValue[attribute]==value;
     }
     function setDiff(Activity [] memory activities,
         ControlFlowElement[] memory allControlFlowElement,EdgeCondition[] memory edgeCondition,
