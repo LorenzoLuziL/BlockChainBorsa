@@ -2,36 +2,38 @@
 pragma solidity >=0.8.0;
 import "./contractMemory.sol";
 contract contractLogic is contractMemory{
+
+    //controllo se per quel messageso ci sono degli attributi inseriti 
+//se non ci sono attributi significa che si cerca di utilizzare un messageso inserito durante la fase di running 
+    modifier  checkKeyMessage(bytes32 key,bytes32 hashInstance){
+        require(instancies[hashInstance].messageAttributes[key].length>0,"error in the key Message");
+        _;
+    }
+
+
+ modifier  checkKeyParicipants(bytes32 key,bytes32 hashInstance){
+        require(instancies[hashInstance].participants[key].length>0,"erro keyParticipants");
+        _;
+    }
+
+
+
 //function to set the activity in the composition case 
 //for the selection case I already have all the data so it is useless
-    function setCompActivity(Activity memory act,bytes32 hashInstance) public {
+    function setTaskRuntime(Activity memory act,bytes32 hashInstance) checkKeyParicipants(act.initiator,hashInstance) checkKeyParicipants(act.target,hashInstance)public {
      //   require(activities[act.id].id==act.id,"id Activity");
-        require(checkKeyParicipants(act.initiator,hashInstance),"key initiator");
-        require(checkKeyParicipants(act.target,hashInstance),"key target");
    //     require(act.messageIn==messages[act.messageIn].id,"message in");
    //     require(act.messageOut==messages[act.messageOut].id,"message out");
         instancies[hashInstance].activities[act.id]=act;
     }
 //function to set the message in the composition case 
-    function setCompMessage(Message memory _message,bytes32 hashInstance) public {
-   //     require(messages[_message.id].id==_message.id,"id message");
-        require(checkKeyMessage(_message.mappingKey,hashInstance),"key mapping");
-     //   require(_message.idActivity==activities[_message.idActivity].id,"id activity message");
-     //   require(checkAddressParticipants(activities[_message.idActivity].initiator,_message.sourceParticipant),"address initiator");
-       // require(checkAddressParticipants(activities[_message.idActivity].target,_message.targetParticipant),"address target");
-    //check the attributed selected in the case of compoxsition
-      /**  for(uint i=0;i<_message.selectedAttr.length;i++){
-            require(checkAttribute(_message.mappingKey,_message.selectedAttr[i]),"attribute");
-        }
-        require(!messages[_message.id].executed,"already executed");**/
+    function setMessageRuntime(Message memory _message,bytes32 hashInstance) checkKeyMessage(_message.mappingKey,hashInstance)public {
+        require(checkAddressParticipants(instancies[hashInstance].activities[_message.idActivity].initiator,_message.sourceParticipant,hashInstance),"address initiator");
+        require(checkAddressParticipants(instancies[hashInstance].activities[_message.idActivity].target,_message.targetParticipant,hashInstance),"address target");
         instancies[hashInstance].messages[_message.id]=_message;
     }
 
-    function checkKeyParicipants(bytes32 key,bytes32 hashInstance)private view returns(bool){
-        return instancies[hashInstance].participants[key].length>0;
-    }
-
-
+   
 //funzione che mi controlla se un indirizzo è presente nella lista di indirizzo fornita all'inizio del generazione del contratto
 //per togliere il for esterno potrei pensare di passare la key del mapping 
     function checkAddressParticipants(bytes32 key,address participant,bytes32 hashInstance) private view returns(bool){
@@ -44,11 +46,7 @@ contract contractLogic is contractMemory{
         return false;
     }
 
-//controllo se per quel messageso ci sono degli attributi inseriti 
-//se non ci sono attributi significa che si cerca di utilizzare un messageso inserito durante la fase di running 
-    function checkKeyMessage(bytes32 key,bytes32 hashInstance) public view returns(bool){
-        return instancies[hashInstance].messageAttributes[key].length>0;
-    }
+
 
 //controllo se quell'attributo è presente in uno specifico mapping 
     function checkAttribute(bytes32 key,bytes32 attribute,bytes32 hashInstance)private view returns(bool){
@@ -99,7 +97,7 @@ contract contractLogic is contractMemory{
         return false;
     }
 
-function setActivityToFalse(bytes32 idActivity,bytes32 hashInstance) private {
+function activateNextActivity(bytes32 idActivity,bytes32 hashInstance) private {
         instancies[hashInstance].activities[idActivity].executed=false;
         instancies[hashInstance].activities[idActivity].tempState=true;
         instancies[hashInstance].messages[instancies[hashInstance].activities[idActivity].messageIn].executed=false;
@@ -109,30 +107,30 @@ function setActivityToFalse(bytes32 idActivity,bytes32 hashInstance) private {
             instancies[hashInstance].messages[instancies[hashInstance].activities[idActivity].messageOut].tempState=true;
         }
 }
-function checkNextElement(bytes32 idElement,bytes32 hashInstance) private {
+
+//Evaluate the execution for the next element
+function evaluateNextElement(bytes32 idElement,bytes32 hashInstance) private {
     // Check if the element is an activity
     if (instancies[hashInstance].activities[idElement].id != bytes32(0)) {
-        setActivityToFalse(idElement,hashInstance);
+        activateNextActivity(idElement,hashInstance);
         return;
     }
     // Check if the element is a control flow element and not yet executed
-    //ControlFlowElement storage element = controlFlowElementList[idElement];
+
     if (instancies[hashInstance].controlFlowElementList[idElement].id != bytes32(0) ) {
         // Evaluate the gateway condition and update execution status
-        instancies[hashInstance].controlFlowElementList[idElement].executed = checkForNextGatewayCondition(idElement,hashInstance);
+        instancies[hashInstance].controlFlowElementList[idElement].executed = evaluateNextGateway(idElement,hashInstance);
         // Update the outgoing activities based on the execution status
-        if(checkForNextGatewayCondition(idElement,hashInstance) && instancies[hashInstance].controlFlowElementList[idElement].elementType!=ElementType.EX_SPLIT ){
+        if(evaluateNextGateway(idElement,hashInstance) && instancies[hashInstance].controlFlowElementList[idElement].elementType!=ElementType.EX_SPLIT ){
             for (uint i = 0; i < instancies[hashInstance].controlFlowElementList[idElement].outgoingActivity.length; i++) {
-                checkNextElement(instancies[hashInstance].controlFlowElementList[idElement].outgoingActivity[i],hashInstance);
-                // bytes32 outgoingId = controlFlowElementList[idElement].outgoingActivity[i];
-                //controlFlowElementList[outgoingId].executed = checkForNextGatewayCondition(outgoingId);
+                evaluateNextElement(instancies[hashInstance].controlFlowElementList[idElement].outgoingActivity[i],hashInstance);
             }
         }
         return;
     }
 }
-
-function checkForNextGatewayCondition(bytes32 _idInElement,bytes32 hashInstance) private returns (bool) {
+//During the evaluation of the nexr element if it found a gateway it checks the condition for that gateway 
+function evaluateNextGateway(bytes32 _idInElement,bytes32 hashInstance) private returns (bool) {
     ControlFlowElement storage gateway = instancies[hashInstance].controlFlowElementList[_idInElement];
 
     // Handle the simple cases first: EX_JOIN, PAR_SPLIT, EVENT_BASED
@@ -151,11 +149,11 @@ function checkForNextGatewayCondition(bytes32 _idInElement,bytes32 hashInstance)
             if (instancies[hashInstance].controlFlowElementList[outgoingId].id != bytes32(0)) {
                 instancies[hashInstance].controlFlowElementList[outgoingId].executed = checkEdgesConditionOnlyId(outgoingId,hashInstance);
                 if(checkEdgesConditionOnlyId(outgoingId,hashInstance)){
-                    checkNextElement(outgoingId,hashInstance);
+                    evaluateNextElement(outgoingId,hashInstance);
                 }
             }
             if(instancies[hashInstance].activities[outgoingId].id !=bytes32(0) && checkEdgesConditionOnlyId(outgoingId,hashInstance)){
-                setActivityToFalse(outgoingId,hashInstance);
+                activateNextActivity(outgoingId,hashInstance);
             }
         }
         return true;
@@ -235,7 +233,7 @@ function checkForNextGatewayCondition(bytes32 _idInElement,bytes32 hashInstance)
         }
 
         //check if the element is a event based 
-        //al the outgoing has to be not executed 
+        //all the outgoing has to be not executed 
         if(gateway.elementType==ElementType.EVENT_BASED){
             if(instancies[hashInstance].activities[gateway.incomingActivity[0]].executed || instancies[hashInstance].controlFlowElementList[gateway.incomingActivity[0]].executed){
                 for(uint i=0;i<gateway.outgoingActivity.length;i++){
@@ -286,33 +284,35 @@ function checkForNextGatewayCondition(bytes32 _idInElement,bytes32 hashInstance)
 //execute the message in the composition case
 //It has to set all the information reguarding the activity all the information for the message and 
 //It has to check for the execution
-    function executeCompMessage(Activity memory _activity,Message memory _message,
+    function executeMessage(Activity memory _activity,Message memory _message,
     ControlFlowElement[] memory currentcontrolFlowElement,
     bytes32 [] memory attributi, bytes32[] memory value,Activity[] memory activityList,
     ControlFlowElement[] memory controlFlowElement,EdgeCondition[] memory edgeCondition,
     Message[] memory messageList, bytes32 hashInstance) public {
         require(instancies[hashInstance].messages[_message.id].executed==false,"already executed");
         
-        setCompActivity(_activity,hashInstance);
-        setCompMessage(_message,hashInstance);
-        setCurrentControlFlow(currentcontrolFlowElement,hashInstance);
+        setTaskRuntime(_activity,hashInstance);
+        setMessageRuntime(_message,hashInstance);
+        setControlFlow(currentcontrolFlowElement,hashInstance);
         setDiff(activityList,controlFlowElement,edgeCondition,messageList,hashInstance);
         require(checkTheExecution(_message.id,hashInstance),"errore nella validazione dell'esecuzione");
         insertIntoMap(attributi, value,hashInstance);
     if(_activity.idOutElement!=bytes32(0)){
         if(instancies[hashInstance].activities[_activity.id].messageIn==_message.id && instancies[hashInstance].activities[_activity.id].messageOut==bytes32(0)){
-            checkNextElement(_activity.idOutElement,hashInstance);
+            evaluateNextElement(_activity.idOutElement,hashInstance);
         }else if(instancies[hashInstance].activities[_activity.id].messageOut==_message.id){
-            checkNextElement(_activity.idOutElement,hashInstance);
+            evaluateNextElement(_activity.idOutElement,hashInstance);
         }
     }
         emit functionDone("Messagge executed");
     }
-    function setCurrentControlFlow (ControlFlowElement[] memory controlFlowElement,bytes32 hashIdInstance) private{
+
+    function setControlFlow (ControlFlowElement[] memory controlFlowElement,bytes32 hashIdInstance) private{
          for(uint i=0;i<controlFlowElement.length;i++){
             instancies[hashIdInstance].controlFlowElementList[controlFlowElement[i].id]=controlFlowElement[i];
         }
     }
+
     function equal(bytes32 attribute,bytes32 value,bytes32 hashInstance)private view returns (bool){
         return instancies[hashInstance].attributeValue[attribute]==value;
     }

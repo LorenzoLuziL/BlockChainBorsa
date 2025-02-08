@@ -19,18 +19,18 @@ contract contractMemory{
        
     event functionDone(string);
 
-    function choInstanceListNumber(bytes32 choId) public view returns(uint256){
+    function getChoreographyInstances(bytes32 choId) public view returns(uint256){
         return choInstanceList[choId].length;
     }
     //id of the element when a new element is created it takes an id
     //for every element I have an Id 
-    function activity(bytes32 hashIdInstance,bytes32 idActivity)public view returns(Activity memory){
+    function getTask(bytes32 hashIdInstance,bytes32 idActivity)public view returns(Activity memory){
         return instancies[hashIdInstance].activities[idActivity];
     }
-    function message(bytes32 hashIdInstance,bytes32 idMessagge)public view returns(Message memory){
+    function getMessage(bytes32 hashIdInstance,bytes32 idMessagge)public view returns(Message memory){
         return instancies[hashIdInstance].messages[idMessagge];
     }
-    function controlFlowElementList(bytes32 hashIdInstance,bytes32 idControlFlowElement)public view returns(ControlFlowElement memory){
+    function getControlFlowElement(bytes32 hashIdInstance,bytes32 idControlFlowElement)public view returns(ControlFlowElement memory){
         return instancies[hashIdInstance].controlFlowElementList[idControlFlowElement];
     }
 //id: identifier
@@ -111,7 +111,7 @@ contract contractMemory{
 
     
     // When i create the contract i passed all the element in the choreography in the selection case i have almost all element populated 
-    function setInformation(Activity [] memory allActivities,Message [] memory allMessages,PartecipantRoles[] memory participantList,
+    function setChoreography(Activity [] memory allActivities,Message [] memory allMessages,PartecipantRoles[] memory participantList,
     MessageAttributes[] memory messagesAttributeList,ControlFlowElement[] memory allControlFlowElement,EdgeCondition[] memory edgeCondition,
     bytes32 idInstance,bytes32 hashIdInstance) public{
 
